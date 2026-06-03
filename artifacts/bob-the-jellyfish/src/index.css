@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800;900&family=Nunito:wght@400;600;700;800;900&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
@@ -85,8 +85,8 @@
   --destructive-foreground: 0 0% 100%;
   --destructive-border: 0 84% 50%;
 
-  --app-font-sans: 'Inter', sans-serif;
-  --app-font-display: 'Outfit', sans-serif;
+  --app-font-sans: 'Nunito', sans-serif;
+  --app-font-display: 'Baloo 2', sans-serif;
   --radius: 1rem;
 }
 
