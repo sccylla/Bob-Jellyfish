@@ -311,8 +311,8 @@ function useOceanSound() {
       if (gain && ctx) {
         gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1);
         setTimeout(() => {
-          sourceRef.current?.stop();
-          ctx.close();
+          try { sourceRef.current?.stop(); } catch {}
+          try { if (ctx.state !== 'closed') ctx.close().catch(() => {}); } catch {}
           ctxRef.current = null;
         }, 1100);
       }
@@ -718,9 +718,10 @@ const SectionHeading = ({ icon: Icon, title, sub }: { icon: React.ComponentType<
       <Icon size={18} className="text-white/40" />
       <div className="h-px flex-1 max-w-[60px]" style={{ background: "linear-gradient(to left, transparent, rgba(255,255,255,0.2))" }} />
     </div>
-    <h2 className="font-display text-4xl sm:text-5xl md:text-6xl text-white"
-      style={{ textShadow: "0 0 40px rgba(14,122,181,0.5)" }}>{title}</h2>
-    {sub && <p className="text-white/45 font-sans text-sm tracking-[0.3em] uppercase mt-1">{sub}</p>}
+    <h2 className="font-display text-4xl sm:text-5xl md:text-6xl"
+      style={{ background: "linear-gradient(135deg, #00e5ff 0%, #ffffff 60%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+        filter: "drop-shadow(0 2px 0 rgba(0,0,0,0.4)) drop-shadow(0 0 24px rgba(0,220,255,0.4))" }}>{title}</h2>
+    {sub && <p className="text-cyan-400/70 font-sans text-sm tracking-[0.3em] uppercase mt-1">{sub}</p>}
   </div>
 );
 
@@ -855,31 +856,34 @@ export default function Home() {
 
               <div className="leading-none">
                 <h1 className="font-display leading-none"
-                  style={{ fontSize: "clamp(6.5rem,20vw,16rem)", color: "#071e38",
-                    WebkitTextStroke: "2px rgba(255,255,255,0.12)",
-                    textShadow: "4px 8px 0 rgba(0,0,0,0.3), 0 0 80px rgba(14,122,181,0.25)" }}>
+                  style={{ fontSize: "clamp(6.5rem,20vw,16rem)",
+                    background: "linear-gradient(160deg, #ffffff 0%, #a8f0ff 50%, #00d4ff 100%)",
+                    WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                    filter: "drop-shadow(0 4px 0 rgba(0,0,0,0.4)) drop-shadow(0 0 40px rgba(0,200,255,0.5))" }}>
                   BOB
                 </h1>
-                <h2 className="font-display text-white leading-none"
+                <h2 className="font-display leading-none"
                   style={{ fontSize: "clamp(2.4rem,7vw,6.5rem)", marginTop: "-0.05em",
-                    textShadow: "2px 4px 0 rgba(0,0,0,0.3)" }}>
+                    color: "#ff9a3c",
+                    textShadow: "0 3px 0 rgba(0,0,0,0.5), 0 0 30px rgba(255,140,50,0.4)" }}>
                   The Jellyfish
                 </h2>
               </div>
 
-              <p className="font-sans text-white/70 leading-relaxed max-w-xs sm:max-w-sm text-base sm:text-lg">
+              <p className="font-sans text-cyan-100/80 leading-relaxed max-w-xs sm:max-w-sm text-base sm:text-lg">
                 Drifting through the currents of TON.<br />
                 Bioluminescent. Uncontrollable. Inevitable.
               </p>
 
               <div className="flex flex-wrap gap-2.5">
                 <Button size="lg" className="h-14 px-8 rounded-full font-display text-white text-xl"
-                  style={{ background: "linear-gradient(135deg, #0a4a8a 0%, #071e38 100%)", border: "1px solid rgba(255,255,255,0.2)", boxShadow: "0 8px 30px rgba(0,0,0,0.4), 0 0 20px rgba(14,122,181,0.2)" }}
+                  style={{ background: "linear-gradient(135deg, #ff8c1a 0%, #e05a00 100%)", border: "none", boxShadow: "0 6px 0 rgba(0,0,0,0.35), 0 0 30px rgba(255,140,0,0.35)" }}
                   data-testid="button-buy-hero">
                   <TridentIcon size={18} className="mr-2 shrink-0" /> Acquire $BOB
                 </Button>
                 <Button size="lg" variant="outline"
-                  className="h-14 px-8 rounded-full font-display text-xl text-white/80 border-white/20 hover:bg-white/5 hover:text-white"
+                  className="h-14 px-8 rounded-full font-display text-xl text-cyan-300 hover:text-white"
+                  style={{ border: "2px solid #00d4ff", background: "rgba(0,212,255,0.08)", boxShadow: "0 0 18px rgba(0,200,255,0.2)" }}
                   data-testid="button-learn-more">
                   <NautilusIcon size={18} className="mr-2 shrink-0" /> Explore
                 </Button>
@@ -933,12 +937,12 @@ export default function Home() {
                   className="rounded-2xl p-5 flex flex-col items-center gap-2 text-center"
                   style={{ background: "rgba(10,60,110,0.28)", border: "1px solid rgba(255,255,255,0.09)", backdropFilter: "blur(14px)" }}>
                   <div className="w-11 h-11 rounded-full flex items-center justify-center"
-                    style={{ background: "rgba(14,122,181,0.2)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                    <Ico size={19} className="text-white/70" />
+                    style={{ background: "linear-gradient(135deg, rgba(0,180,255,0.35), rgba(0,100,200,0.2))", border: "1.5px solid rgba(0,212,255,0.35)" }}>
+                    <Ico size={19} className="text-cyan-300" />
                   </div>
-                  <p className="text-white/35 text-[10px] uppercase tracking-[0.2em] font-sans">{label}</p>
-                  <p className="font-display text-3xl text-white">{value}</p>
-                  <p className="text-white/60 text-xs font-semibold uppercase tracking-widest font-sans">{sub}</p>
+                  <p className="text-cyan-400/60 text-[10px] uppercase tracking-[0.2em] font-sans">{label}</p>
+                  <p className="font-display text-3xl" style={{ color: "#00e5ff", textShadow: "0 0 12px rgba(0,220,255,0.4)" }}>{value}</p>
+                  <p className="text-orange-300/80 text-xs font-bold uppercase tracking-widest font-sans">{sub}</p>
                 </motion.div>
               ))}
             </div>
@@ -967,13 +971,13 @@ export default function Home() {
                   style={{ background: "rgba(10,60,110,0.22)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(10px)" }}
                   data-testid={`step-${i + 1}`}>
                   <div className="w-13 h-13 shrink-0 rounded-xl flex flex-col items-center justify-center gap-0.5 p-3"
-                    style={{ background: "rgba(7,30,56,0.9)", border: "1px solid rgba(255,255,255,0.12)" }}>
-                    <Ico size={18} className="text-white/60" />
-                    <span className="font-display text-[11px] text-white/35">{step}</span>
+                    style={{ background: "linear-gradient(135deg, #ff8c1a22, #ff6a0011)", border: "1.5px solid rgba(255,140,30,0.4)" }}>
+                    <Ico size={18} className="text-orange-300" />
+                    <span className="font-display text-[11px] text-orange-400/70">{step}</span>
                   </div>
                   <div>
                     <h3 className="font-display text-2xl text-white">{title}</h3>
-                    <p className="text-white/55 text-base font-sans leading-snug">{desc}</p>
+                    <p className="text-cyan-100/60 text-base font-sans leading-snug">{desc}</p>
                   </div>
                 </motion.div>
               ))}
