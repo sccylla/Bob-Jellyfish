@@ -232,22 +232,42 @@ function WaterRipples() {
 }
 
 // ─── Ambient Ocean Sound ──────────────────────────────────────────────────────
+// Split into unlock() (must run in a gesture callstack) and startAudio() (can
+// run any time after unlock). This allows iOS Safari to hear the sound even when
+// the AudioContext is created during the loading screen and audio starts after.
 function useOceanSound() {
   const [playing, setPlaying] = useState(false);
-  const ctxRef = useRef<AudioContext | null>(null);
-  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
-  const gainRef = useRef<GainNode | null>(null);
+  const ctxRef      = useRef<AudioContext | null>(null);
+  const sourceRef   = useRef<AudioBufferSourceNode | null>(null);
+  const gainRef     = useRef<GainNode | null>(null);
+  const unlockedRef = useRef(false);  // true once ctx created inside a gesture
 
-  const start = useCallback(() => {
+  // MUST be called synchronously inside a user-gesture handler
+  const unlock = useCallback(() => {
+    if (unlockedRef.current) return;
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
     ctxRef.current = ctx;
-    // Resume immediately — required on mobile Safari and suspended desktop contexts
+    ctx.resume().catch(() => {});
+    // Play a 1-frame silent buffer — fully satisfies iOS gesture requirement
+    const silentBuf = ctx.createBuffer(1, 1, ctx.sampleRate);
+    const silentSrc = ctx.createBufferSource();
+    silentSrc.buffer = silentBuf;
+    silentSrc.connect(ctx.destination);
+    silentSrc.start(0);
+    unlockedRef.current = true;
+  }, []);
+
+  // Build the audio graph and start playing — safe to call outside a gesture
+  // as long as unlock() was already called (iOS ctx remains running after unlock)
+  const startAudio = useCallback(() => {
+    const ctx = ctxRef.current;
+    if (!ctx || ctx.state === 'closed') return;
+    if (gainRef.current) return; // already playing
     ctx.resume().catch(() => {});
     const sampleRate = ctx.sampleRate;
 
-    // Brown noise buffer (4 seconds, looped)
     const buf = ctx.createBuffer(2, sampleRate * 4, sampleRate);
     for (let ch = 0; ch < 2; ch++) {
       const data = buf.getChannelData(ch);
@@ -259,24 +279,20 @@ function useOceanSound() {
         data[i] *= 4;
       }
     }
-
     const src = ctx.createBufferSource();
     src.buffer = buf;
     src.loop = true;
 
-    // Deep underwater lowpass
     const lpf = ctx.createBiquadFilter();
     lpf.type = "lowpass";
     lpf.frequency.value = 350;
     lpf.Q.value = 0.8;
 
-    // Gentle resonance peak for "whoosh"
     const peaking = ctx.createBiquadFilter();
     peaking.type = "peaking";
     peaking.frequency.value = 80;
     peaking.gain.value = 8;
 
-    // LFO for gentle water movement
     const lfo = ctx.createOscillator();
     lfo.type = "sine";
     lfo.frequency.value = 0.07;
@@ -296,42 +312,39 @@ function useOceanSound() {
     gain.connect(ctx.destination);
     src.start();
     sourceRef.current = src;
-
-    // Fade in
     gain.gain.linearRampToValueAtTime(0.28, ctx.currentTime + 2);
+    setPlaying(true);
   }, []);
 
+  // Toggle called from a button click — always a gesture, so unlock is safe here too
   const toggle = useCallback(() => {
     if (!playing) {
-      start();
-      setPlaying(true);
+      if (!unlockedRef.current) unlock(); // safe: button click IS a gesture
+      startAudio();
     } else {
       const gain = gainRef.current;
-      const ctx = ctxRef.current;
+      const ctx  = ctxRef.current;
       if (gain && ctx) {
         gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1);
         setTimeout(() => {
           try { sourceRef.current?.stop(); } catch {}
           try { if (ctx.state !== 'closed') ctx.close().catch(() => {}); } catch {}
-          ctxRef.current = null;
+          ctxRef.current    = null;
+          gainRef.current   = null;
+          sourceRef.current = null;
+          unlockedRef.current = false; // reset so unlock works again on next start
         }, 1100);
       }
       setPlaying(false);
     }
-  }, [playing, start]);
-
-  const resume = useCallback(() => {
-    ctxRef.current?.resume().catch(() => {});
-  }, []);
+  }, [playing, unlock, startAudio]);
 
   useEffect(() => () => {
     try { sourceRef.current?.stop(); } catch {}
-    try {
-      const ctx = ctxRef.current;
-      if (ctx && ctx.state !== 'closed') ctx.close().catch(() => {});
-    } catch {}
+    try { const c = ctxRef.current; if (c && c.state !== 'closed') c.close().catch(() => {}); } catch {}
   }, []);
-  return { playing, toggle, resume };
+
+  return { playing, toggle, unlock, startAudio, unlockedRef };
 }
 
 // ─── Loading Screen ───────────────────────────────────────────────────────────
@@ -728,42 +741,37 @@ const SectionHeading = ({ icon: Icon, title, sub }: { icon: React.ComponentType<
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function Home() {
   const [loaded, setLoaded] = useState(false);
-  const { playing, toggle: toggleSound, resume: resumeSound } = useOceanSound();
-  const hasAutoStarted = useRef(false);
+  const { playing, toggle: toggleSound, unlock, startAudio, unlockedRef } = useOceanSound();
+  const loadedRef = useRef(false);
 
   const { scrollY } = useScroll();
   const raysY = useTransform(scrollY, [0, 800], [0, -120]);
 
-  // Auto-play ocean sound — start on first user interaction (required by all browsers)
-  useEffect(() => {
-    if (!loaded) return;
-    // Use closure-local flag so this effect runs once with playing=false captured
-    let triggered = false;
+  // Keep loadedRef in sync — gesture closures read this without re-subscribing
+  useEffect(() => { loadedRef.current = loaded; }, [loaded]);
 
-    const onInteraction = () => {
+  // ── Step A: listen from VERY FIRST MOUNT so any tap during the loading screen
+  //   is captured. iOS requires AudioContext creation inside the gesture callstack.
+  useEffect(() => {
+    let triggered = false;
+    const EVENTS = ["touchstart", "touchend", "click", "keydown", "scroll"] as const;
+    const onGesture = () => {
       if (triggered) return;
       triggered = true;
-      // playing is always false here (first render after loaded=true)
-      toggleSound(); // creates AudioContext inside a user-gesture callstack → works on all devices
+      EVENTS.forEach(ev => document.removeEventListener(ev, onGesture));
+      unlock();                               // creates ctx + silent buffer → unlocks iOS
+      if (loadedRef.current) startAudio();    // start immediately if page already loaded
     };
-
-    const events = ["click", "touchstart", "scroll", "keydown"] as const;
-    events.forEach(ev => document.addEventListener(ev, onInteraction, { once: true, passive: true }));
-
-    // Immediate attempt — works on Chrome/Firefox desktop that allow autoplay
-    const t = setTimeout(() => {
-      if (!triggered) {
-        triggered = true;
-        try { toggleSound(); } catch {}
-      }
-    }, 400);
-
-    return () => {
-      clearTimeout(t);
-      events.forEach(ev => document.removeEventListener(ev, onInteraction));
-    };
+    EVENTS.forEach(ev => document.addEventListener(ev, onGesture, { passive: true }));
+    return () => EVENTS.forEach(ev => document.removeEventListener(ev, onGesture));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded]); // intentional: capture playing=false, toggleSound stable ref
+  }, []);
+
+  // ── Step B: when loading screen finishes, start audio if already unlocked
+  useEffect(() => {
+    if (loaded && unlockedRef.current && !playing) startAudio();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
 
   return (
     <>
@@ -808,7 +816,7 @@ export default function Home() {
         <OceanFloor />
 
         {/* ── Navbar ─────────────────────────────────────────────────────── */}
-        <nav className="fixed top-0 w-full z-50 py-2.5 px-4 md:px-10 flex items-center justify-between"
+        <nav className="fixed top-0 w-full z-50 py-2.5 px-3 sm:px-5 md:px-10 flex items-center justify-between gap-2"
           style={{ background: "rgba(5,20,45,0.75)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
           <div className="flex items-center gap-2.5">
             <img src="/bob-nobg.png" alt="Bob" className="w-9 h-9 object-contain"
@@ -818,22 +826,22 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-6 font-display text-xl text-white/70">
+          <div className="hidden md:flex items-center gap-6 font-display text-lg text-white/70">
             {[["Depths", "#tokenomics"], ["How to Buy", "#how-to-buy"], ["Community", "#community"]].map(([label, href]) => (
               <a key={label} href={href} className="hover:text-white transition-colors">{label}</a>
             ))}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button onClick={toggleSound}
-              className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-105"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all hover:scale-105 shrink-0"
               style={{ background: playing ? "rgba(14,122,181,0.4)" : "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)" }}
               title={playing ? "Mute ocean" : "Play ocean ambience"}
               data-testid="button-sound">
-              {playing ? <Volume2 size={15} className="text-[#00bfff]" /> : <VolumeX size={15} className="text-white/50" />}
+              {playing ? <Volume2 size={14} className="text-[#00bfff]" /> : <VolumeX size={14} className="text-white/50" />}
             </button>
-            <Button className="rounded-full px-5 h-9 font-display text-white text-sm"
-              style={{ background: "linear-gradient(135deg, #0a4a8a, #0a2050)", border: "1px solid rgba(255,255,255,0.15)", boxShadow: "0 0 20px rgba(14,100,180,0.3)" }}
+            <Button className="rounded-full px-3 sm:px-5 h-8 sm:h-9 font-display text-white text-xs sm:text-sm whitespace-nowrap"
+              style={{ background: "linear-gradient(135deg, #ff8c1a, #e05a00)", border: "none", boxShadow: "0 3px 0 rgba(0,0,0,0.3)" }}
               data-testid="button-buy-nav">
               Buy $BOB
             </Button>
@@ -841,11 +849,11 @@ export default function Home() {
         </nav>
 
         {/* ── Hero ───────────────────────────────────────────────────────── */}
-        <section className="relative flex items-center pt-14 pb-0 z-10 overflow-hidden px-5 sm:px-8 md:px-12 lg:px-20 min-h-[100svh]">
-          <div className="w-full flex flex-col lg:flex-row items-center gap-4 lg:gap-0 py-8 lg:py-0">
+        <section className="relative flex items-center justify-center pt-16 pb-4 z-10 overflow-hidden px-5 sm:px-8 md:px-12 lg:px-20 min-h-[100svh]">
+          <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-8 lg:gap-0 py-8 lg:py-0">
 
             {/* Left */}
-            <motion.div className="relative z-10 flex flex-col gap-4 lg:w-1/2"
+            <motion.div className="relative z-10 flex flex-col gap-4 w-full lg:w-1/2"
               initial={{ opacity: 0, x: -40 }} animate={{ opacity: loaded ? 1 : 0, x: loaded ? 0 : -40 }}
               transition={{ duration: 0.8, delay: 0.3 }}>
 
@@ -941,7 +949,7 @@ export default function Home() {
                     <Ico size={19} className="text-cyan-300" />
                   </div>
                   <p className="text-cyan-400/60 text-[10px] uppercase tracking-[0.2em] font-sans">{label}</p>
-                  <p className="font-display text-3xl" style={{ color: "#00e5ff", textShadow: "0 0 12px rgba(0,220,255,0.4)" }}>{value}</p>
+                  <p className="font-display text-2xl sm:text-3xl" style={{ color: "#00e5ff", textShadow: "0 0 12px rgba(0,220,255,0.4)" }}>{value}</p>
                   <p className="text-orange-300/80 text-xs font-bold uppercase tracking-widest font-sans">{sub}</p>
                 </motion.div>
               ))}
@@ -967,17 +975,17 @@ export default function Home() {
                 <motion.div key={i}
                   initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
                   transition={{ delay: i * 0.1, duration: 0.5 }}
-                  className="rounded-xl p-4 flex items-center gap-4"
+                  className="rounded-xl p-3 sm:p-4 flex items-center gap-3 sm:gap-4"
                   style={{ background: "rgba(10,60,110,0.22)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(10px)" }}
                   data-testid={`step-${i + 1}`}>
-                  <div className="w-13 h-13 shrink-0 rounded-xl flex flex-col items-center justify-center gap-0.5 p-3"
+                  <div className="w-12 h-12 shrink-0 rounded-xl flex flex-col items-center justify-center gap-0.5 p-2.5"
                     style={{ background: "linear-gradient(135deg, #ff8c1a22, #ff6a0011)", border: "1.5px solid rgba(255,140,30,0.4)" }}>
                     <Ico size={18} className="text-orange-300" />
                     <span className="font-display text-[11px] text-orange-400/70">{step}</span>
                   </div>
                   <div>
-                    <h3 className="font-display text-2xl text-white">{title}</h3>
-                    <p className="text-cyan-100/60 text-base font-sans leading-snug">{desc}</p>
+                    <h3 className="font-display text-xl sm:text-2xl text-white">{title}</h3>
+                    <p className="text-cyan-100/60 text-sm sm:text-base font-sans leading-snug">{desc}</p>
                   </div>
                 </motion.div>
               ))}
@@ -1004,13 +1012,13 @@ export default function Home() {
             <h3 className="font-display text-5xl mb-1 text-white">Join the Current</h3>
             <p className="text-white/40 mb-5 text-sm font-sans tracking-[0.2em] uppercase">Ride the wave or miss the tide</p>
 
-            <div className="flex justify-center gap-3 mb-6">
-              <Button size="lg" className="h-13 px-7 rounded-full font-display text-white text-xl"
-                style={{ background: "rgba(10,70,130,0.9)", border: "1px solid rgba(255,255,255,0.15)" }} data-testid="button-telegram">
+            <div className="flex flex-wrap justify-center gap-3 mb-6">
+              <Button size="lg" className="h-12 px-7 rounded-full font-display text-white text-lg sm:text-xl"
+                style={{ background: "linear-gradient(135deg, #ff8c1a 0%, #e05a00 100%)", border: "none", boxShadow: "0 5px 0 rgba(0,0,0,0.3), 0 0 24px rgba(255,140,0,0.3)" }} data-testid="button-telegram">
                 <Send className="mr-2" size={16} /> Telegram
               </Button>
-              <Button size="lg" className="h-13 px-7 rounded-full font-display text-white text-xl"
-                style={{ background: "rgba(7,30,56,0.9)", border: "1px solid rgba(255,255,255,0.12)" }} data-testid="button-buy-footer">
+              <Button size="lg" className="h-12 px-7 rounded-full font-display text-cyan-300 text-lg sm:text-xl"
+                style={{ background: "rgba(0,212,255,0.08)", border: "2px solid #00d4ff", boxShadow: "0 0 18px rgba(0,200,255,0.2)" }} data-testid="button-buy-footer">
                 <TridentIcon size={16} className="mr-2" /> Buy $BOB
               </Button>
             </div>
