@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Rubik+Dirt&family=Caveat:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
@@ -86,7 +86,7 @@
   --destructive-border: 0 84% 50%;
 
   --app-font-sans: 'Nunito', sans-serif;
-  --app-font-display: 'Fredoka', sans-serif;
+  --app-font-display: 'Rubik Dirt', cursive;
   --radius: 1rem;
 }
 

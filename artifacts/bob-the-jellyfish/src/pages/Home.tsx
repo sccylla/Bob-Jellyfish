@@ -86,8 +86,8 @@ function JellyfishCursor() {
     };
     let raf: number;
     const loop = () => {
-      pos.current.x += (mouse.current.x - pos.current.x) * 0.13;
-      pos.current.y += (mouse.current.y - pos.current.y) * 0.13;
+      pos.current.x += (mouse.current.x - pos.current.x) * 0.24;
+      pos.current.y += (mouse.current.y - pos.current.y) * 0.24;
       // Hotspot = top-center of dome, offset SVG so tip aligns with cursor
       const W = hovering.current ? 58 : 48;
       const H = hovering.current ? 78 : 65;
@@ -243,6 +243,8 @@ function useOceanSound() {
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
     ctxRef.current = ctx;
+    // Resume immediately — required on mobile Safari and suspended desktop contexts
+    ctx.resume().catch(() => {});
     const sampleRate = ctx.sampleRate;
 
     // Brown noise buffer (4 seconds, looped)
@@ -318,6 +320,10 @@ function useOceanSound() {
     }
   }, [playing, start]);
 
+  const resume = useCallback(() => {
+    ctxRef.current?.resume().catch(() => {});
+  }, []);
+
   useEffect(() => () => {
     try { sourceRef.current?.stop(); } catch {}
     try {
@@ -325,7 +331,7 @@ function useOceanSound() {
       if (ctx && ctx.state !== 'closed') ctx.close().catch(() => {});
     } catch {}
   }, []);
-  return { playing, toggle };
+  return { playing, toggle, resume };
 }
 
 // ─── Loading Screen ───────────────────────────────────────────────────────────
@@ -721,30 +727,42 @@ const SectionHeading = ({ icon: Icon, title, sub }: { icon: React.ComponentType<
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function Home() {
   const [loaded, setLoaded] = useState(false);
-  const { playing, toggle: toggleSound } = useOceanSound();
+  const { playing, toggle: toggleSound, resume: resumeSound } = useOceanSound();
   const hasAutoStarted = useRef(false);
 
   const { scrollY } = useScroll();
   const raysY = useTransform(scrollY, [0, 800], [0, -120]);
 
-  // Auto-play ocean sound on first interaction after load
+  // Auto-play ocean sound — start on first user interaction (required by all browsers)
   useEffect(() => {
     if (!loaded) return;
-    const startAudio = () => {
-      if (hasAutoStarted.current) return;
-      hasAutoStarted.current = true;
-      toggleSound();
+    // Use closure-local flag so this effect runs once with playing=false captured
+    let triggered = false;
+
+    const onInteraction = () => {
+      if (triggered) return;
+      triggered = true;
+      // playing is always false here (first render after loaded=true)
+      toggleSound(); // creates AudioContext inside a user-gesture callstack → works on all devices
     };
-    // Immediate attempt (works on some desktop browsers)
-    const t = setTimeout(() => { try { startAudio(); } catch {} }, 600);
-    // Fallback: first interaction (all devices)
+
     const events = ["click", "touchstart", "scroll", "keydown"] as const;
-    events.forEach(ev => document.addEventListener(ev, startAudio, { once: true, passive: true }));
+    events.forEach(ev => document.addEventListener(ev, onInteraction, { once: true, passive: true }));
+
+    // Immediate attempt — works on Chrome/Firefox desktop that allow autoplay
+    const t = setTimeout(() => {
+      if (!triggered) {
+        triggered = true;
+        try { toggleSound(); } catch {}
+      }
+    }, 400);
+
     return () => {
       clearTimeout(t);
-      events.forEach(ev => document.removeEventListener(ev, startAudio));
+      events.forEach(ev => document.removeEventListener(ev, onInteraction));
     };
-  }, [loaded, toggleSound]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]); // intentional: capture playing=false, toggleSound stable ref
 
   return (
     <>
