@@ -70,45 +70,40 @@ const WheelIcon = ({ size = 24, className = "" }) => (
   </svg>
 );
 
-// ─── Custom Cursor ────────────────────────────────────────────────────────────
-function CustomCursor() {
-  const outerRef = useRef<HTMLDivElement>(null);
-  const innerRef = useRef<HTMLDivElement>(null);
+// ─── Jellyfish Cursor ─────────────────────────────────────────────────────────
+function JellyfishCursor() {
+  const jellyRef = useRef<HTMLDivElement>(null);
   const glowRef  = useRef<HTMLDivElement>(null);
-  const mouse    = useRef({ x: -200, y: -200 });
-  const outer    = useRef({ x: -200, y: -200 });
+  const mouse    = useRef({ x: -300, y: -300 });
+  const pos      = useRef({ x: -300, y: -300 });
   const hovering = useRef(false);
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       mouse.current = { x: e.clientX, y: e.clientY };
-      if (innerRef.current) {
-        innerRef.current.style.transform = `translate(${e.clientX - 4}px, ${e.clientY - 4}px)`;
-      }
       const el = document.elementFromPoint(e.clientX, e.clientY);
       hovering.current = !!el?.closest('a, button, [role="button"], input, textarea, select');
     };
-
     let raf: number;
     const loop = () => {
-      const ease = hovering.current ? 0.1 : 0.14;
-      outer.current.x += (mouse.current.x - outer.current.x) * ease;
-      outer.current.y += (mouse.current.y - outer.current.y) * ease;
-      const size = hovering.current ? 48 : 32;
-      const ox = outer.current.x - size / 2;
-      const oy = outer.current.y - size / 2;
-      if (outerRef.current) {
-        outerRef.current.style.transform = `translate(${ox}px, ${oy}px)`;
-        outerRef.current.style.width  = `${size}px`;
-        outerRef.current.style.height = `${size}px`;
-        outerRef.current.style.borderColor = hovering.current
-          ? "rgba(255,140,0,0.7)" : "rgba(0,200,255,0.55)";
-        outerRef.current.style.boxShadow = hovering.current
-          ? "0 0 14px rgba(255,140,0,0.4), inset 0 0 8px rgba(255,140,0,0.1)"
-          : "0 0 14px rgba(0,200,255,0.3), inset 0 0 8px rgba(0,200,255,0.08)";
+      pos.current.x += (mouse.current.x - pos.current.x) * 0.13;
+      pos.current.y += (mouse.current.y - pos.current.y) * 0.13;
+      // Hotspot = top-center of dome, offset SVG so tip aligns with cursor
+      const W = hovering.current ? 58 : 48;
+      const H = hovering.current ? 78 : 65;
+      // top of dome sits at ~7% of height
+      const tx = pos.current.x - W / 2;
+      const ty = pos.current.y - H * 0.08;
+      if (jellyRef.current) {
+        jellyRef.current.style.transform = `translate(${tx}px, ${ty}px)`;
+        jellyRef.current.style.width  = `${W}px`;
+        jellyRef.current.style.height = `${H}px`;
+        jellyRef.current.style.filter = hovering.current
+          ? "drop-shadow(0 0 10px rgba(255,160,0,0.7)) drop-shadow(0 0 20px rgba(255,100,0,0.4))"
+          : "drop-shadow(0 0 8px rgba(0,200,255,0.7)) drop-shadow(0 0 18px rgba(0,150,255,0.35))";
       }
       if (glowRef.current) {
-        glowRef.current.style.transform = `translate(${outer.current.x - 60}px, ${outer.current.y - 60}px)`;
+        glowRef.current.style.transform = `translate(${pos.current.x - 80}px, ${pos.current.y - 80}px)`;
       }
       raf = requestAnimationFrame(loop);
     };
@@ -119,16 +114,120 @@ function CustomCursor() {
 
   return (
     <>
-      {/* Soft glow aura */}
-      <div ref={glowRef} className="fixed top-0 left-0 w-[120px] h-[120px] rounded-full pointer-events-none z-[9998] hidden md:block"
-        style={{ background: "radial-gradient(circle, rgba(0,200,255,0.06) 0%, transparent 70%)", transition: "none" }} />
-      {/* Outer bubble ring */}
-      <div ref={outerRef} className="fixed top-0 left-0 rounded-full pointer-events-none z-[9999] hidden md:block"
-        style={{ border: "1.5px solid rgba(0,200,255,0.55)", backdropFilter: "blur(1px)", transition: "width 0.18s, height 0.18s, border-color 0.18s, box-shadow 0.18s" }} />
-      {/* Inner dot */}
-      <div ref={innerRef} className="fixed top-0 left-0 w-2 h-2 rounded-full pointer-events-none z-[9999] hidden md:block"
-        style={{ background: "rgba(0,210,255,0.9)", boxShadow: "0 0 8px rgba(0,210,255,0.9)" }} />
+      {/* Cursor glow aura */}
+      <div ref={glowRef} className="fixed top-0 left-0 w-40 h-40 rounded-full pointer-events-none z-[9997] hidden md:block"
+        style={{ background: "radial-gradient(circle, rgba(0,200,255,0.07) 0%, transparent 70%)" }} />
+      {/* Jellyfish SVG cursor */}
+      <div ref={jellyRef} className="fixed top-0 left-0 pointer-events-none z-[9999] hidden md:block" style={{ willChange: "transform" }}>
+        <svg viewBox="0 0 60 80" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="cDome" cx="38%" cy="30%" r="65%">
+              <stop offset="0%" stopColor="rgba(200,245,255,0.75)" />
+              <stop offset="100%" stopColor="rgba(0,160,230,0.38)" />
+            </radialGradient>
+            <radialGradient id="cGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="rgba(100,220,255,0.18)" />
+              <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+            </radialGradient>
+          </defs>
+
+          {/* Outer glow blob */}
+          <ellipse cx="30" cy="28" rx="26" ry="22" fill="url(#cGlow)" />
+
+          {/* Dome body */}
+          <path d="M8 30 Q8 6 30 5 Q52 6 52 30 Q52 40 30 44 Q8 40 8 30 Z"
+            fill="url(#cDome)" stroke="rgba(0,210,255,0.85)" strokeWidth="1.8" />
+
+          {/* Sheen highlight */}
+          <ellipse cx="18" cy="16" rx="8" ry="6"
+            fill="rgba(255,255,255,0.28)" transform="rotate(-18,18,16)" />
+
+          {/* Spots */}
+          <circle cx="36" cy="14" r="3" fill="rgba(180,240,255,0.25)" />
+          <circle cx="40" cy="22" r="2" fill="rgba(180,240,255,0.2)" />
+
+          {/* Eyes — big cartoon whites */}
+          <circle cx="20" cy="25" r="5.5" fill="white" opacity="0.96" />
+          <circle cx="40" cy="25" r="5.5" fill="white" opacity="0.96" />
+          {/* Pupils */}
+          <circle cx="21.5" cy="26" r="3.2" fill="rgba(10,20,80,0.88)" />
+          <circle cx="41.5" cy="26" r="3.2" fill="rgba(10,20,80,0.88)" />
+          {/* Eye shines */}
+          <circle cx="22.8" cy="24.2" r="1.2" fill="white" />
+          <circle cx="42.8" cy="24.2" r="1.2" fill="white" />
+
+          {/* Smile */}
+          <path d="M22 33 Q30 39 38 33"
+            stroke="rgba(0,90,180,0.65)" strokeWidth="2.2" fill="none" strokeLinecap="round" />
+
+          {/* Bell scallop edge */}
+          <path d="M8 40 Q13 45 18 40 Q23 35 28 40 Q33 45 38 40 Q43 35 48 40 Q51 43 52 40"
+            stroke="rgba(0,200,255,0.45)" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+
+          {/* Tentacles with animation */}
+          <g stroke="rgba(0,200,255,0.75)" fill="none" strokeLinecap="round">
+            <path d="M12 43 Q9 54 12 65"  strokeWidth="2.2">
+              <animateTransform attributeName="transform" type="rotate" values="0 12 43;4 12 43;0 12 43;-4 12 43;0 12 43" dur="2.1s" repeatCount="indefinite" />
+            </path>
+            <path d="M20 45 Q17 57 20 68" strokeWidth="1.8">
+              <animateTransform attributeName="transform" type="rotate" values="0 20 45;-3 20 45;0 20 45;3 20 45;0 20 45" dur="2.4s" repeatCount="indefinite" />
+            </path>
+            <path d="M30 46 Q30 58 30 70" strokeWidth="2.2">
+              <animateTransform attributeName="transform" type="rotate" values="0 30 46;2 30 46;0 30 46;-2 30 46;0 30 46" dur="1.9s" repeatCount="indefinite" />
+            </path>
+            <path d="M40 45 Q43 57 40 68" strokeWidth="1.8">
+              <animateTransform attributeName="transform" type="rotate" values="0 40 45;3 40 45;0 40 45;-3 40 45;0 40 45" dur="2.3s" repeatCount="indefinite" />
+            </path>
+            <path d="M48 43 Q51 54 48 65" strokeWidth="2.2">
+              <animateTransform attributeName="transform" type="rotate" values="0 48 43;-4 48 43;0 48 43;4 48 43;0 48 43" dur="2.0s" repeatCount="indefinite" />
+            </path>
+          </g>
+
+          {/* Dome breathe animation */}
+          <animateTransform attributeName="transform" type="scale" values="1 1;1.02 0.98;1 1;0.98 1.02;1 1"
+            dur="3s" repeatCount="indefinite" additive="sum" />
+        </svg>
+      </div>
     </>
+  );
+}
+
+// ─── Mouse-reactive Water Ripples ─────────────────────────────────────────────
+function WaterRipples() {
+  const [ripples, setRipples] = useState<{ id: number; x: number; y: number }[]>([]);
+  const counter   = useRef(0);
+  const lastPos   = useRef({ x: 0, y: 0 });
+  const lastTime  = useRef(0);
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const now = Date.now();
+      const dx = e.clientX - lastPos.current.x;
+      const dy = e.clientY - lastPos.current.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (now - lastTime.current > 180 && dist > 25) {
+        lastTime.current = now;
+        lastPos.current = { x: e.clientX, y: e.clientY };
+        const id = counter.current++;
+        setRipples(p => [...p.slice(-10), { id, x: e.clientX, y: e.clientY }]);
+      }
+    };
+    window.addEventListener("mousemove", onMove, { passive: true });
+    return () => window.removeEventListener("mousemove", onMove);
+  }, []);
+
+  return (
+    <div className="fixed inset-0 pointer-events-none z-[2] overflow-hidden hidden md:block">
+      {ripples.map(r => (
+        <motion.div key={r.id} className="absolute rounded-full"
+          style={{ left: r.x, top: r.y, x: "-50%", y: "-50%",
+            border: "1px solid rgba(0,210,255,0.35)",
+            boxShadow: "0 0 8px rgba(0,200,255,0.12)" }}
+          initial={{ width: 0, height: 0, opacity: 0.6 }}
+          animate={{ width: 140, height: 140, opacity: 0 }}
+          transition={{ duration: 1.6, ease: "easeOut" }} />
+      ))}
+    </div>
   );
 }
 
@@ -219,7 +318,13 @@ function useOceanSound() {
     }
   }, [playing, start]);
 
-  useEffect(() => () => { sourceRef.current?.stop(); ctxRef.current?.close(); }, []);
+  useEffect(() => () => {
+    try { sourceRef.current?.stop(); } catch {}
+    try {
+      const ctx = ctxRef.current;
+      if (ctx && ctx.state !== 'closed') ctx.close().catch(() => {});
+    } catch {}
+  }, []);
   return { playing, toggle };
 }
 
@@ -607,9 +712,9 @@ const SectionHeading = ({ icon: Icon, title, sub }: { icon: React.ComponentType<
       <Icon size={18} className="text-white/40" />
       <div className="h-px flex-1 max-w-[60px]" style={{ background: "linear-gradient(to left, transparent, rgba(255,255,255,0.2))" }} />
     </div>
-    <h2 className="font-display text-3xl sm:text-4xl md:text-5xl text-white"
-      style={{ textShadow: "0 0 30px rgba(14,122,181,0.4)" }}>{title}</h2>
-    {sub && <p className="text-white/40 font-sans text-xs tracking-[0.3em] uppercase mt-1">{sub}</p>}
+    <h2 className="font-display text-4xl sm:text-5xl md:text-6xl text-white"
+      style={{ textShadow: "0 0 40px rgba(14,122,181,0.5)" }}>{title}</h2>
+    {sub && <p className="text-white/45 font-sans text-sm tracking-[0.3em] uppercase mt-1">{sub}</p>}
   </div>
 );
 
@@ -617,27 +722,63 @@ const SectionHeading = ({ icon: Icon, title, sub }: { icon: React.ComponentType<
 export default function Home() {
   const [loaded, setLoaded] = useState(false);
   const { playing, toggle: toggleSound } = useOceanSound();
+  const hasAutoStarted = useRef(false);
 
   const { scrollY } = useScroll();
   const raysY = useTransform(scrollY, [0, 800], [0, -120]);
 
+  // Auto-play ocean sound on first interaction after load
+  useEffect(() => {
+    if (!loaded) return;
+    const startAudio = () => {
+      if (hasAutoStarted.current) return;
+      hasAutoStarted.current = true;
+      toggleSound();
+    };
+    // Immediate attempt (works on some desktop browsers)
+    const t = setTimeout(() => { try { startAudio(); } catch {} }, 600);
+    // Fallback: first interaction (all devices)
+    const events = ["click", "touchstart", "scroll", "keydown"] as const;
+    events.forEach(ev => document.addEventListener(ev, startAudio, { once: true, passive: true }));
+    return () => {
+      clearTimeout(t);
+      events.forEach(ev => document.removeEventListener(ev, startAudio));
+    };
+  }, [loaded, toggleSound]);
+
   return (
     <>
-      <CustomCursor />
+      <JellyfishCursor />
+      <WaterRipples />
       <AnimatePresence>{!loaded && <LoadingScreen onDone={() => setLoaded(true)} />}</AnimatePresence>
 
       <motion.div className="relative text-white overflow-x-hidden"
         style={{ background: "linear-gradient(180deg, #071e38 0%, #0a3c6a 20%, #0b5a95 45%, #083470 70%, #041830 100%)" }}
         initial={{ opacity: 0 }} animate={{ opacity: loaded ? 1 : 0 }} transition={{ duration: 0.8 }}>
 
-        {/* ── Caustic underwater light shimmer ── */}
+        {/* ── Caustic underwater light shimmer (boosted opacity) ── */}
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
           <div className="caustic-layer-a absolute inset-0"
-            style={{ background: "radial-gradient(ellipse 400px 300px at 20% 30%, rgba(0,150,255,0.055) 0%, transparent 70%)" }} />
+            style={{ background: "radial-gradient(ellipse 500px 380px at 20% 30%, rgba(0,160,255,0.13) 0%, transparent 70%)" }} />
           <div className="caustic-layer-b absolute inset-0"
-            style={{ background: "radial-gradient(ellipse 350px 450px at 75% 20%, rgba(0,200,255,0.04) 0%, transparent 70%)" }} />
+            style={{ background: "radial-gradient(ellipse 420px 550px at 78% 18%, rgba(0,210,255,0.1) 0%, transparent 70%)" }} />
           <div className="caustic-layer-c absolute inset-0"
-            style={{ background: "radial-gradient(ellipse 500px 250px at 50% 70%, rgba(0,120,220,0.04) 0%, transparent 70%)" }} />
+            style={{ background: "radial-gradient(ellipse 600px 300px at 50% 75%, rgba(0,130,230,0.1) 0%, transparent 70%)" }} />
+          {/* Extra shimmer layer */}
+          <div className="caustic-layer-a absolute inset-0"
+            style={{ background: "radial-gradient(ellipse 300px 400px at 60% 50%, rgba(0,180,255,0.07) 0%, transparent 70%)", animationDelay: "-4s", animationDuration: "16s" }} />
+        </div>
+
+        {/* ── Animated water surface shimmer at page top ── */}
+        <div className="fixed top-0 left-0 right-0 h-32 pointer-events-none z-[1] overflow-hidden">
+          <motion.div className="absolute inset-0"
+            style={{ background: "linear-gradient(180deg, rgba(0,180,255,0.12) 0%, rgba(0,120,200,0.06) 50%, transparent 100%)" }}
+            animate={{ opacity: [0.6, 1, 0.6], scaleX: [1, 1.02, 1] }}
+            transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }} />
+          <motion.div className="absolute inset-0"
+            style={{ background: "linear-gradient(180deg, rgba(120,220,255,0.08) 0%, transparent 60%)" }}
+            animate={{ opacity: [1, 0.4, 1], x: ["0%", "2%", "0%"] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1.2 }} />
         </div>
 
         <motion.div style={{ y: raysY }} className="pointer-events-none">
@@ -654,11 +795,11 @@ export default function Home() {
             <img src="/bob-nobg.png" alt="Bob" className="w-9 h-9 object-contain"
               style={{ filter: "drop-shadow(0 2px 8px rgba(255,140,0,0.5))" }} />
             <div className="hidden sm:flex flex-col leading-tight">
-              <span className="font-display text-lg text-white leading-none">Bob the Jellyfish</span>
+              <span className="font-display text-2xl text-white leading-none">Bob the Jellyfish</span>
             </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-6 font-display text-base text-white/70">
+          <div className="hidden md:flex items-center gap-6 font-display text-xl text-white/70">
             {[["Depths", "#tokenomics"], ["How to Buy", "#how-to-buy"], ["Community", "#community"]].map(([label, href]) => (
               <a key={label} href={href} className="hover:text-white transition-colors">{label}</a>
             ))}
@@ -696,33 +837,33 @@ export default function Home() {
 
               <div className="leading-none">
                 <h1 className="font-display leading-none"
-                  style={{ fontSize: "clamp(5rem,16vw,12rem)", color: "#071e38",
-                    WebkitTextStroke: "1px rgba(255,255,255,0.1)",
-                    textShadow: "3px 6px 0 rgba(0,0,0,0.25), 0 0 60px rgba(14,122,181,0.2)" }}>
+                  style={{ fontSize: "clamp(6.5rem,20vw,16rem)", color: "#071e38",
+                    WebkitTextStroke: "2px rgba(255,255,255,0.12)",
+                    textShadow: "4px 8px 0 rgba(0,0,0,0.3), 0 0 80px rgba(14,122,181,0.25)" }}>
                   BOB
                 </h1>
                 <h2 className="font-display text-white leading-none"
-                  style={{ fontSize: "clamp(1.8rem,5vw,4.2rem)", marginTop: "-0.06em",
-                    textShadow: "1px 3px 0 rgba(0,0,0,0.25)" }}>
+                  style={{ fontSize: "clamp(2.4rem,7vw,6.5rem)", marginTop: "-0.05em",
+                    textShadow: "2px 4px 0 rgba(0,0,0,0.3)" }}>
                   The Jellyfish
                 </h2>
               </div>
 
-              <p className="font-sans text-white/65 leading-relaxed max-w-xs sm:max-w-sm text-sm sm:text-base">
+              <p className="font-sans text-white/70 leading-relaxed max-w-xs sm:max-w-sm text-base sm:text-lg">
                 Drifting through the currents of TON.<br />
                 Bioluminescent. Uncontrollable. Inevitable.
               </p>
 
               <div className="flex flex-wrap gap-2.5">
-                <Button size="lg" className="h-11 px-6 rounded-full font-display text-white text-base"
+                <Button size="lg" className="h-14 px-8 rounded-full font-display text-white text-xl"
                   style={{ background: "linear-gradient(135deg, #0a4a8a 0%, #071e38 100%)", border: "1px solid rgba(255,255,255,0.2)", boxShadow: "0 8px 30px rgba(0,0,0,0.4), 0 0 20px rgba(14,122,181,0.2)" }}
                   data-testid="button-buy-hero">
-                  <TridentIcon size={16} className="mr-2 shrink-0" /> Acquire $BOB
+                  <TridentIcon size={18} className="mr-2 shrink-0" /> Acquire $BOB
                 </Button>
                 <Button size="lg" variant="outline"
-                  className="h-11 px-6 rounded-full font-display text-base text-white/80 border-white/20 hover:bg-white/5 hover:text-white"
+                  className="h-14 px-8 rounded-full font-display text-xl text-white/80 border-white/20 hover:bg-white/5 hover:text-white"
                   data-testid="button-learn-more">
-                  <NautilusIcon size={16} className="mr-2 shrink-0" /> Explore
+                  <NautilusIcon size={18} className="mr-2 shrink-0" /> Explore
                 </Button>
               </div>
 
@@ -778,8 +919,8 @@ export default function Home() {
                     <Ico size={19} className="text-white/70" />
                   </div>
                   <p className="text-white/35 text-[10px] uppercase tracking-[0.2em] font-sans">{label}</p>
-                  <p className="font-display text-2xl text-white">{value}</p>
-                  <p className="text-white/50 text-[10px] font-semibold uppercase tracking-widest font-sans">{sub}</p>
+                  <p className="font-display text-3xl text-white">{value}</p>
+                  <p className="text-white/60 text-xs font-semibold uppercase tracking-widest font-sans">{sub}</p>
                 </motion.div>
               ))}
             </div>
@@ -813,8 +954,8 @@ export default function Home() {
                     <span className="font-display text-[11px] text-white/35">{step}</span>
                   </div>
                   <div>
-                    <h3 className="font-display text-lg text-white">{title}</h3>
-                    <p className="text-white/45 text-sm font-sans leading-snug">{desc}</p>
+                    <h3 className="font-display text-2xl text-white">{title}</h3>
+                    <p className="text-white/55 text-base font-sans leading-snug">{desc}</p>
                   </div>
                 </motion.div>
               ))}
@@ -838,17 +979,17 @@ export default function Home() {
               <SeaStarIcon size={14} className="text-white/25" />
               <div className="h-px w-12" style={{ background: "rgba(255,255,255,0.12)" }} />
             </div>
-            <h3 className="font-display text-3xl mb-1 text-white">Join the Current</h3>
-            <p className="text-white/35 mb-5 text-xs font-sans tracking-[0.2em] uppercase">Ride the wave or miss the tide</p>
+            <h3 className="font-display text-5xl mb-1 text-white">Join the Current</h3>
+            <p className="text-white/40 mb-5 text-sm font-sans tracking-[0.2em] uppercase">Ride the wave or miss the tide</p>
 
             <div className="flex justify-center gap-3 mb-6">
-              <Button size="lg" className="h-11 px-6 rounded-full font-display text-white text-base"
+              <Button size="lg" className="h-13 px-7 rounded-full font-display text-white text-xl"
                 style={{ background: "rgba(10,70,130,0.9)", border: "1px solid rgba(255,255,255,0.15)" }} data-testid="button-telegram">
-                <Send className="mr-2" size={14} /> Telegram
+                <Send className="mr-2" size={16} /> Telegram
               </Button>
-              <Button size="lg" className="h-11 px-6 rounded-full font-display text-white text-base"
+              <Button size="lg" className="h-13 px-7 rounded-full font-display text-white text-xl"
                 style={{ background: "rgba(7,30,56,0.9)", border: "1px solid rgba(255,255,255,0.12)" }} data-testid="button-buy-footer">
-                <TridentIcon size={14} className="mr-2" /> Buy $BOB
+                <TridentIcon size={16} className="mr-2" /> Buy $BOB
               </Button>
             </div>
 
