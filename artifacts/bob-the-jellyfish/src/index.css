@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800;900&family=Cinzel+Decorative:wght@400;700;900&family=Raleway:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Boogaloo&family=Nunito:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
@@ -85,8 +85,8 @@
   --destructive-foreground: 0 0% 100%;
   --destructive-border: 0 84% 50%;
 
-  --app-font-sans: 'Raleway', sans-serif;
-  --app-font-display: 'Cinzel', serif;
+  --app-font-sans: 'Nunito', sans-serif;
+  --app-font-display: 'Boogaloo', cursive;
   --radius: 1rem;
 }
 
@@ -128,6 +128,9 @@
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
   * {
     @apply border-border;
   }
@@ -139,105 +142,118 @@
   }
 }
 
-/* Animations */
+/* ── Custom cursor (pointer devices only) ─────────────────────────────────── */
+@media (pointer: fine) {
+  *, *::before, *::after { cursor: none !important; }
+}
+
+/* ── Animations ───────────────────────────────────────────────────────────── */
 @keyframes float {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-20px); }
+  50%       { transform: translateY(-20px); }
 }
 
 @keyframes bubble {
-  0% {
-    transform: translateY(100vh) scale(0) translateX(0);
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-    transform: translateY(90vh) scale(1) translateX(10px);
-  }
-  50% {
-    transform: translateY(50vh) scale(1.2) translateX(-10px);
-  }
-  90% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-10vh) scale(1) translateX(10px);
-    opacity: 0;
-  }
+  0%   { transform: translateY(100vh) scale(0) translateX(0);   opacity: 0; }
+  10%  { opacity: 1; transform: translateY(90vh) scale(1) translateX(10px); }
+  50%  { transform: translateY(50vh) scale(1.2) translateX(-10px); }
+  90%  { opacity: 1; }
+  100% { transform: translateY(-10vh) scale(1) translateX(10px); opacity: 0; }
 }
 
 @keyframes sway {
   0%, 100% { transform: rotate(-5deg); }
-  50% { transform: rotate(5deg); }
+  50%       { transform: rotate(5deg); }
 }
 
 @keyframes drift {
-  0% { transform: translate(0, 0) scale(1); opacity: 0; }
-  20% { opacity: 0.8; }
-  80% { opacity: 0.8; }
+  0%   { transform: translate(0, 0) scale(1); opacity: 0; }
+  20%  { opacity: 0.8; }
+  80%  { opacity: 0.8; }
   100% { transform: translate(50px, -100px) scale(0); opacity: 0; }
 }
 
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
-.animate-bubble {
-  animation: bubble 15s linear infinite;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.1));
-  box-shadow: 0 0 10px rgba(0, 212, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(2px);
-}
-
-.animate-sway {
-  animation: sway 4s ease-in-out infinite;
-  transform-origin: bottom center;
-}
-
-.particle {
-  position: absolute;
-  background: #00D4FF;
-  border-radius: 50%;
-  box-shadow: 0 0 10px 2px rgba(0, 212, 255, 0.8);
-  animation: drift 8s linear infinite;
-}
-
 @keyframes fish-rtl {
-  0%   { transform: translateX(110vw); opacity: 0; }
+  0%   { transform: translateX(110vw);  opacity: 0; }
   5%   { opacity: 1; }
   95%  { opacity: 1; }
-  100% { transform: translateX(-15vw); opacity: 0; }
+  100% { transform: translateX(-15vw);  opacity: 0; }
 }
 
 @keyframes fish-ltr {
   0%   { transform: translateX(-15vw) scaleX(-1); opacity: 0; }
   5%   { opacity: 1; }
   95%  { opacity: 1; }
-  100% { transform: translateX(110vw) scaleX(-1); opacity: 0; }
+  100% { transform: translateX(110vw) scaleX(-1);  opacity: 0; }
 }
 
-.animate-fish-rtl {
-  animation: fish-rtl linear infinite;
+/* Caustic underwater light shimmer */
+@keyframes causticA {
+  0%, 100% { transform: translate(0px, 0px)    scale(1)    rotate(0deg); }
+  33%       { transform: translate(40px, -25px) scale(1.12) rotate(1.5deg); }
+  66%       { transform: translate(-20px, 35px) scale(0.94) rotate(-1deg); }
+}
+@keyframes causticB {
+  0%, 100% { transform: translate(0px,  0px)   scale(1)    rotate(0deg); }
+  40%       { transform: translate(-45px, 20px) scale(1.08) rotate(-2deg); }
+  80%       { transform: translate(30px, -40px) scale(1.14) rotate(1deg); }
+}
+@keyframes causticC {
+  0%, 100% { transform: translate(0px, 0px)    scale(1); }
+  50%       { transform: translate(55px, 30px)  scale(1.06); }
 }
 
-.animate-fish-ltr {
-  animation: fish-ltr linear infinite;
+/* Water surface shimmer (used on section headings / banners) */
+@keyframes waterShimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+
+.animate-float     { animation: float 6s ease-in-out infinite; }
+.animate-sway      { animation: sway 4s ease-in-out infinite; transform-origin: bottom center; }
+.animate-fish-rtl  { animation: fish-rtl linear infinite; }
+.animate-fish-ltr  { animation: fish-ltr linear infinite; }
+
+.animate-bubble {
+  animation: bubble 15s linear infinite;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8), rgba(255,255,255,0.1));
+  box-shadow: 0 0 10px rgba(0,212,255,0.3), inset 0 0 10px rgba(255,255,255,0.5);
+  backdrop-filter: blur(2px);
+}
+
+.particle {
+  position: absolute;
+  background: #00D4FF;
+  border-radius: 50%;
+  box-shadow: 0 0 10px 2px rgba(0,212,255,0.8);
+  animation: drift 8s linear infinite;
 }
 
 .glass-panel {
-  background: rgba(13, 33, 55, 0.4);
+  background: rgba(13,33,55,0.4);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 212, 255, 0.1);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  border: 1px solid rgba(0,212,255,0.1);
+  box-shadow: 0 8px 32px 0 rgba(0,0,0,0.37);
 }
 
 .text-glow {
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5), 0 0 20px rgba(0, 212, 255, 0.3);
+  text-shadow: 0 0 10px rgba(255,255,255,0.5), 0 0 20px rgba(0,212,255,0.3);
 }
 
 .text-gradient {
   background: linear-gradient(to right, #00D4FF, #FF8C00);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+/* Caustic layers — composited as fixed overlays */
+.caustic-layer-a {
+  animation: causticA 11s ease-in-out infinite;
+}
+.caustic-layer-b {
+  animation: causticB 14s ease-in-out infinite;
+}
+.caustic-layer-c {
+  animation: causticC 9s ease-in-out infinite;
 }

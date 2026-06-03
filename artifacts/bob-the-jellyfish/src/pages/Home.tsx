@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
+import { motion, AnimatePresence, useAnimationControls, useScroll, useTransform } from "framer-motion";
 import { Fish, Anchor, Waves, Droplets, Shell, Compass, Volume2, VolumeX, ArrowRight, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -69,6 +69,68 @@ const WheelIcon = ({ size = 24, className = "" }) => (
     <line x1="9.5" y1="14.5" x2="5.6" y2="18.4" />
   </svg>
 );
+
+// ─── Custom Cursor ────────────────────────────────────────────────────────────
+function CustomCursor() {
+  const outerRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const glowRef  = useRef<HTMLDivElement>(null);
+  const mouse    = useRef({ x: -200, y: -200 });
+  const outer    = useRef({ x: -200, y: -200 });
+  const hovering = useRef(false);
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      mouse.current = { x: e.clientX, y: e.clientY };
+      if (innerRef.current) {
+        innerRef.current.style.transform = `translate(${e.clientX - 4}px, ${e.clientY - 4}px)`;
+      }
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      hovering.current = !!el?.closest('a, button, [role="button"], input, textarea, select');
+    };
+
+    let raf: number;
+    const loop = () => {
+      const ease = hovering.current ? 0.1 : 0.14;
+      outer.current.x += (mouse.current.x - outer.current.x) * ease;
+      outer.current.y += (mouse.current.y - outer.current.y) * ease;
+      const size = hovering.current ? 48 : 32;
+      const ox = outer.current.x - size / 2;
+      const oy = outer.current.y - size / 2;
+      if (outerRef.current) {
+        outerRef.current.style.transform = `translate(${ox}px, ${oy}px)`;
+        outerRef.current.style.width  = `${size}px`;
+        outerRef.current.style.height = `${size}px`;
+        outerRef.current.style.borderColor = hovering.current
+          ? "rgba(255,140,0,0.7)" : "rgba(0,200,255,0.55)";
+        outerRef.current.style.boxShadow = hovering.current
+          ? "0 0 14px rgba(255,140,0,0.4), inset 0 0 8px rgba(255,140,0,0.1)"
+          : "0 0 14px rgba(0,200,255,0.3), inset 0 0 8px rgba(0,200,255,0.08)";
+      }
+      if (glowRef.current) {
+        glowRef.current.style.transform = `translate(${outer.current.x - 60}px, ${outer.current.y - 60}px)`;
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    window.addEventListener("mousemove", onMove, { passive: true });
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("mousemove", onMove); };
+  }, []);
+
+  return (
+    <>
+      {/* Soft glow aura */}
+      <div ref={glowRef} className="fixed top-0 left-0 w-[120px] h-[120px] rounded-full pointer-events-none z-[9998] hidden md:block"
+        style={{ background: "radial-gradient(circle, rgba(0,200,255,0.06) 0%, transparent 70%)", transition: "none" }} />
+      {/* Outer bubble ring */}
+      <div ref={outerRef} className="fixed top-0 left-0 rounded-full pointer-events-none z-[9999] hidden md:block"
+        style={{ border: "1.5px solid rgba(0,200,255,0.55)", backdropFilter: "blur(1px)", transition: "width 0.18s, height 0.18s, border-color 0.18s, box-shadow 0.18s" }} />
+      {/* Inner dot */}
+      <div ref={innerRef} className="fixed top-0 left-0 w-2 h-2 rounded-full pointer-events-none z-[9999] hidden md:block"
+        style={{ background: "rgba(0,210,255,0.9)", boxShadow: "0 0 8px rgba(0,210,255,0.9)" }} />
+    </>
+  );
+}
 
 // ─── Ambient Ocean Sound ──────────────────────────────────────────────────────
 function useOceanSound() {
@@ -516,26 +578,38 @@ function GodRays() {
   );
 }
 
-// ─── Divider ──────────────────────────────────────────────────────────────────
-const OceanDivider = ({ flip = false }) => (
-  <div className={`relative z-10 overflow-hidden ${flip ? "rotate-180" : ""}`}>
-    <svg viewBox="0 0 1440 60" preserveAspectRatio="none" className="w-full h-12">
-      <path d="M0,30 C240,60 480,0 720,30 C960,60 1200,0 1440,30 L1440,60 L0,60 Z" fill="rgba(3,16,40,0.9)" />
-    </svg>
+// ─── Animated Wave Divider ─────────────────────────────────────────────────────
+const WaveDivider = ({ flip = false, color = "rgba(3,14,38,0.95)" }: { flip?: boolean; color?: string }) => (
+  <div className="relative z-10 overflow-hidden" style={{ height: 80, marginTop: flip ? -2 : 0, marginBottom: flip ? 0 : -2 }}>
+    <motion.div
+      className="absolute inset-0 flex"
+      style={{ width: "200%", top: 0, bottom: 0 }}
+      animate={{ x: ["0%", "-50%"] }}
+      transition={{ duration: 9, repeat: Infinity, ease: "linear" }}>
+      {[0, 1].map(k => (
+        <svg key={k} viewBox="0 0 1440 80" preserveAspectRatio="none" className="flex-1 h-full"
+          style={{ transform: flip ? "scaleY(-1)" : "none", transformOrigin: "center" }}>
+          <path d="M0,40 C120,80 240,0 360,40 C480,80 600,0 720,40 C840,80 960,0 1080,40 C1200,80 1320,0 1440,40 L1440,80 L0,80 Z"
+            fill={color} />
+          <path d="M0,55 C180,75 360,35 540,55 C720,75 900,35 1080,55 C1260,75 1380,45 1440,55 L1440,80 L0,80 Z"
+            fill={color} opacity="0.6" />
+        </svg>
+      ))}
+    </motion.div>
   </div>
 );
 
 // ─── Section Heading ──────────────────────────────────────────────────────────
 const SectionHeading = ({ icon: Icon, title, sub }: { icon: React.ComponentType<{ size?: number; className?: string }>; title: string; sub?: string }) => (
-  <div className="text-center mb-10">
+  <div className="text-center mb-8">
     <div className="flex items-center justify-center gap-3 mb-2">
       <div className="h-px flex-1 max-w-[60px]" style={{ background: "linear-gradient(to right, transparent, rgba(255,255,255,0.2))" }} />
       <Icon size={18} className="text-white/40" />
       <div className="h-px flex-1 max-w-[60px]" style={{ background: "linear-gradient(to left, transparent, rgba(255,255,255,0.2))" }} />
     </div>
-    <h2 className="font-display font-bold text-3xl md:text-4xl text-white tracking-[0.15em] uppercase"
+    <h2 className="font-display text-3xl sm:text-4xl md:text-5xl text-white"
       style={{ textShadow: "0 0 30px rgba(14,122,181,0.4)" }}>{title}</h2>
-    {sub && <p className="text-white/40 font-sans text-xs tracking-[0.3em] uppercase mt-2">{sub}</p>}
+    {sub && <p className="text-white/40 font-sans text-xs tracking-[0.3em] uppercase mt-1">{sub}</p>}
   </div>
 );
 
@@ -544,38 +618,53 @@ export default function Home() {
   const [loaded, setLoaded] = useState(false);
   const { playing, toggle: toggleSound } = useOceanSound();
 
+  const { scrollY } = useScroll();
+  const raysY = useTransform(scrollY, [0, 800], [0, -120]);
+
   return (
     <>
+      <CustomCursor />
       <AnimatePresence>{!loaded && <LoadingScreen onDone={() => setLoaded(true)} />}</AnimatePresence>
 
-      <motion.div className="relative min-h-screen text-white overflow-x-hidden"
+      <motion.div className="relative text-white overflow-x-hidden"
         style={{ background: "linear-gradient(180deg, #071e38 0%, #0a3c6a 20%, #0b5a95 45%, #083470 70%, #041830 100%)" }}
         initial={{ opacity: 0 }} animate={{ opacity: loaded ? 1 : 0 }} transition={{ duration: 0.8 }}>
 
-        <GodRays />
+        {/* ── Caustic underwater light shimmer ── */}
+        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+          <div className="caustic-layer-a absolute inset-0"
+            style={{ background: "radial-gradient(ellipse 400px 300px at 20% 30%, rgba(0,150,255,0.055) 0%, transparent 70%)" }} />
+          <div className="caustic-layer-b absolute inset-0"
+            style={{ background: "radial-gradient(ellipse 350px 450px at 75% 20%, rgba(0,200,255,0.04) 0%, transparent 70%)" }} />
+          <div className="caustic-layer-c absolute inset-0"
+            style={{ background: "radial-gradient(ellipse 500px 250px at 50% 70%, rgba(0,120,220,0.04) 0%, transparent 70%)" }} />
+        </div>
+
+        <motion.div style={{ y: raysY }} className="pointer-events-none">
+          <GodRays />
+        </motion.div>
         <Bubbles />
         <SwimmingFish />
         <OceanFloor />
 
         {/* ── Navbar ─────────────────────────────────────────────────────── */}
-        <nav className="fixed top-0 w-full z-50 py-3 px-6 md:px-10 flex items-center justify-between"
-          style={{ background: "rgba(5,20,45,0.7)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          <div className="flex items-center gap-3">
-            <img src="/bob-nobg.png" alt="Bob" className="w-10 h-10 object-contain"
+        <nav className="fixed top-0 w-full z-50 py-2.5 px-4 md:px-10 flex items-center justify-between"
+          style={{ background: "rgba(5,20,45,0.75)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="flex items-center gap-2.5">
+            <img src="/bob-nobg.png" alt="Bob" className="w-9 h-9 object-contain"
               style={{ filter: "drop-shadow(0 2px 8px rgba(255,140,0,0.5))" }} />
             <div className="hidden sm:flex flex-col leading-tight">
-              <span className="font-display font-bold text-base text-white tracking-[0.18em] uppercase leading-none">Bob</span>
-              <span className="font-sans text-[9px] text-white/45 tracking-[0.35em] uppercase">The Jellyfish</span>
+              <span className="font-display text-lg text-white leading-none">Bob the Jellyfish</span>
             </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-7 text-[11px] font-display font-semibold text-white/70 tracking-[0.2em] uppercase">
-            {[["Depths", "#tokenomics"], ["Navigate", "#how-to-buy"], ["Current", "#community"]].map(([label, href]) => (
-              <a key={label} href={href} className="hover:text-white transition-colors hover:tracking-[0.25em]">{label}</a>
+          <div className="hidden md:flex items-center gap-6 font-display text-base text-white/70">
+            {[["Depths", "#tokenomics"], ["How to Buy", "#how-to-buy"], ["Community", "#community"]].map(([label, href]) => (
+              <a key={label} href={href} className="hover:text-white transition-colors">{label}</a>
             ))}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button onClick={toggleSound}
               className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-105"
               style={{ background: playing ? "rgba(14,122,181,0.4)" : "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)" }}
@@ -583,7 +672,7 @@ export default function Home() {
               data-testid="button-sound">
               {playing ? <Volume2 size={15} className="text-[#00bfff]" /> : <VolumeX size={15} className="text-white/50" />}
             </button>
-            <Button className="rounded-full px-5 h-9 font-display font-semibold text-white text-xs tracking-[0.15em] uppercase"
+            <Button className="rounded-full px-5 h-9 font-display text-white text-sm"
               style={{ background: "linear-gradient(135deg, #0a4a8a, #0a2050)", border: "1px solid rgba(255,255,255,0.15)", boxShadow: "0 0 20px rgba(14,100,180,0.3)" }}
               data-testid="button-buy-nav">
               Buy $BOB
@@ -592,53 +681,55 @@ export default function Home() {
         </nav>
 
         {/* ── Hero ───────────────────────────────────────────────────────── */}
-        <section className="relative min-h-screen flex items-center pt-16 z-10 overflow-hidden px-6 md:px-12 lg:px-20">
-          <div className="w-full flex flex-col lg:flex-row items-center gap-6 lg:gap-0">
+        <section className="relative flex items-center pt-14 pb-0 z-10 overflow-hidden px-5 sm:px-8 md:px-12 lg:px-20 min-h-[100svh]">
+          <div className="w-full flex flex-col lg:flex-row items-center gap-4 lg:gap-0 py-8 lg:py-0">
 
             {/* Left */}
-            <motion.div className="relative z-10 flex flex-col gap-5 lg:w-1/2"
+            <motion.div className="relative z-10 flex flex-col gap-4 lg:w-1/2"
               initial={{ opacity: 0, x: -40 }} animate={{ opacity: loaded ? 1 : 0, x: loaded ? 0 : -40 }}
               transition={{ duration: 0.8, delay: 0.3 }}>
 
-              {/* Eyebrow */}
-              <div className="flex items-center gap-3">
-                <div className="h-px w-10" style={{ background: "rgba(255,255,255,0.25)" }} />
-                <span className="font-sans text-[10px] tracking-[0.45em] text-white/50 uppercase">The TON Ocean</span>
+              <div className="flex items-center gap-2">
+                <div className="h-px w-8" style={{ background: "rgba(255,255,255,0.25)" }} />
+                <span className="font-sans text-[10px] tracking-[0.4em] text-white/50 uppercase">The TON Ocean</span>
               </div>
 
               <div className="leading-none">
-                <h1 className="font-display font-black leading-none" style={{ fontSize: "clamp(5rem,15vw,11rem)", color: "#071e38", WebkitTextStroke: "1px rgba(255,255,255,0.1)", textShadow: "3px 6px 0 rgba(0,0,0,0.25), 0 0 60px rgba(14,122,181,0.2)" }}>
+                <h1 className="font-display leading-none"
+                  style={{ fontSize: "clamp(5rem,16vw,12rem)", color: "#071e38",
+                    WebkitTextStroke: "1px rgba(255,255,255,0.1)",
+                    textShadow: "3px 6px 0 rgba(0,0,0,0.25), 0 0 60px rgba(14,122,181,0.2)" }}>
                   BOB
                 </h1>
-                <h2 className="font-display font-semibold text-white leading-none tracking-[0.12em]"
-                  style={{ fontSize: "clamp(1.6rem,4.5vw,3.8rem)", marginTop: "-0.08em", textShadow: "1px 3px 0 rgba(0,0,0,0.25)" }}>
+                <h2 className="font-display text-white leading-none"
+                  style={{ fontSize: "clamp(1.8rem,5vw,4.2rem)", marginTop: "-0.06em",
+                    textShadow: "1px 3px 0 rgba(0,0,0,0.25)" }}>
                   The Jellyfish
                 </h2>
               </div>
 
-              <p className="font-sans text-white/65 font-light leading-relaxed max-w-sm text-sm md:text-base tracking-wide">
+              <p className="font-sans text-white/65 leading-relaxed max-w-xs sm:max-w-sm text-sm sm:text-base">
                 Drifting through the currents of TON.<br />
                 Bioluminescent. Uncontrollable. Inevitable.
               </p>
 
-              <div className="flex flex-wrap gap-3 mt-1">
-                <Button size="lg" className="h-12 px-7 rounded-full font-display font-semibold text-white text-sm tracking-[0.12em] uppercase"
+              <div className="flex flex-wrap gap-2.5">
+                <Button size="lg" className="h-11 px-6 rounded-full font-display text-white text-base"
                   style={{ background: "linear-gradient(135deg, #0a4a8a 0%, #071e38 100%)", border: "1px solid rgba(255,255,255,0.2)", boxShadow: "0 8px 30px rgba(0,0,0,0.4), 0 0 20px rgba(14,122,181,0.2)" }}
                   data-testid="button-buy-hero">
                   <TridentIcon size={16} className="mr-2 shrink-0" /> Acquire $BOB
                 </Button>
                 <Button size="lg" variant="outline"
-                  className="h-12 px-7 rounded-full font-display font-semibold text-sm tracking-[0.12em] uppercase text-white/80 border-white/20 hover:bg-white/5 hover:text-white"
+                  className="h-11 px-6 rounded-full font-display text-base text-white/80 border-white/20 hover:bg-white/5 hover:text-white"
                   data-testid="button-learn-more">
                   <NautilusIcon size={16} className="mr-2 shrink-0" /> Explore
                 </Button>
               </div>
 
-              {/* Socials */}
-              <div className="flex items-center gap-3 mt-1">
+              <div className="flex items-center gap-2.5">
                 {[{ icon: Send, label: "Telegram" }, { icon: WheelIcon, label: "Twitter" }, { icon: Anchor, label: "TON" }].map(({ icon: Ico, label }, i) => (
                   <button key={i} aria-label={label} data-testid={`social-${label.toLowerCase()}`}
-                    className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 hover:border-white/40"
+                    className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110"
                     style={{ background: "rgba(7,30,56,0.8)", border: "1px solid rgba(255,255,255,0.15)" }}>
                     <Ico size={15} className="text-white/60" />
                   </button>
@@ -647,26 +738,26 @@ export default function Home() {
             </motion.div>
 
             {/* Right — Bob */}
-            <motion.div className="relative z-10 flex items-center justify-center lg:w-1/2"
+            <motion.div className="relative z-10 flex items-center justify-center lg:w-1/2 w-full"
               initial={{ opacity: 0, scale: 0.8, x: 40 }} animate={{ opacity: loaded ? 1 : 0, scale: loaded ? 1 : 0.8, x: loaded ? 0 : 40 }}
               transition={{ duration: 0.9, delay: 0.4 }}>
               <AliveBob />
             </motion.div>
           </div>
 
-          {/* Scroll hint */}
-          <motion.div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 text-white/30"
+          {/* Scroll hint — pinned to bottom of section */}
+          <motion.div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-white/30"
             animate={{ y: [0, 7, 0] }} transition={{ repeat: Infinity, duration: 2.2 }}>
-            <Waves size={16} />
-            <span className="text-[9px] tracking-[0.4em] uppercase font-sans">Dive In</span>
+            <Waves size={15} />
+            <span className="text-[8px] tracking-[0.4em] uppercase font-sans">Dive In</span>
           </motion.div>
         </section>
 
-        <OceanDivider />
+        <WaveDivider color="rgba(3,14,38,0.95)" />
 
         {/* ── Tokenomics ─────────────────────────────────────────────────── */}
-        <section id="tokenomics" className="py-14 relative z-10 px-6"
-          style={{ background: "rgba(3,14,38,0.9)" }}>
+        <section id="tokenomics" className="py-10 relative z-10 px-5 sm:px-8"
+          style={{ background: "rgba(3,14,38,0.95)" }}>
           <motion.div initial={{ opacity: 0, y: 25 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}
             className="max-w-4xl mx-auto">
             <SectionHeading icon={NautilusIcon} title="Depths of $BOB" sub="Token Distribution" />
@@ -679,15 +770,15 @@ export default function Home() {
               ].map(({ icon: Ico, label, value, sub }, i) => (
                 <motion.div key={i}
                   initial={{ opacity: 0, scale: 0.88 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }}
-                  transition={{ delay: i * 0.09, duration: 0.45 }} whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                  className="rounded-2xl p-5 flex flex-col items-center gap-2.5 text-center"
-                  style={{ background: "rgba(10,60,110,0.25)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(12px)" }}>
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center"
-                    style={{ background: "rgba(14,122,181,0.18)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                    <Ico size={20} className="text-white/70" />
+                  transition={{ delay: i * 0.09, duration: 0.45 }} whileHover={{ y: -6, transition: { duration: 0.18 } }}
+                  className="rounded-2xl p-5 flex flex-col items-center gap-2 text-center"
+                  style={{ background: "rgba(10,60,110,0.28)", border: "1px solid rgba(255,255,255,0.09)", backdropFilter: "blur(14px)" }}>
+                  <div className="w-11 h-11 rounded-full flex items-center justify-center"
+                    style={{ background: "rgba(14,122,181,0.2)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                    <Ico size={19} className="text-white/70" />
                   </div>
-                  <p className="text-white/35 text-[10px] uppercase tracking-[0.25em] font-sans">{label}</p>
-                  <p className="font-display font-bold text-xl text-white">{value}</p>
+                  <p className="text-white/35 text-[10px] uppercase tracking-[0.2em] font-sans">{label}</p>
+                  <p className="font-display text-2xl text-white">{value}</p>
                   <p className="text-white/50 text-[10px] font-semibold uppercase tracking-widest font-sans">{sub}</p>
                 </motion.div>
               ))}
@@ -695,35 +786,35 @@ export default function Home() {
           </motion.div>
         </section>
 
-        <OceanDivider flip />
+        <WaveDivider flip color="rgba(4,18,45,0.97)" />
 
         {/* ── How to Buy ─────────────────────────────────────────────────── */}
-        <section id="how-to-buy" className="py-14 relative z-10 px-6"
-          style={{ background: "rgba(4,18,45,0.95)" }}>
+        <section id="how-to-buy" className="py-10 relative z-10 px-5 sm:px-8"
+          style={{ background: "rgba(4,18,45,0.97)" }}>
           <motion.div initial={{ opacity: 0, y: 25 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}
             className="max-w-2xl mx-auto">
             <SectionHeading icon={Compass} title="Chart the Course" sub="How to Acquire $BOB" />
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {[
-                { icon: JellyfishIcon, step: "I", title: "Secure a TON Wallet", desc: "Download Tonkeeper to hold your assets." },
-                { icon: Droplets, step: "II", title: "Acquire TON", desc: "Purchase TON on any major exchange." },
-                { icon: Fish, step: "III", title: "Navigate to a DEX", desc: "Swim to Ston.fi or Dedust." },
-                { icon: TridentIcon, step: "IV", title: "Claim $BOB", desc: "Paste the contract address and execute the swap." },
+                { icon: JellyfishIcon, step: "I",  title: "Secure a TON Wallet", desc: "Download Tonkeeper to hold your assets." },
+                { icon: Droplets,      step: "II", title: "Acquire TON",          desc: "Purchase TON on any major exchange." },
+                { icon: Fish,          step: "III",title: "Navigate to a DEX",    desc: "Swim to Ston.fi or Dedust." },
+                { icon: TridentIcon,   step: "IV", title: "Claim $BOB",           desc: "Paste the contract address and execute the swap." },
               ].map(({ icon: Ico, step, title, desc }, i) => (
                 <motion.div key={i}
                   initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
                   transition={{ delay: i * 0.1, duration: 0.5 }}
                   className="rounded-xl p-4 flex items-center gap-4"
-                  style={{ background: "rgba(10,60,110,0.2)", border: "1px solid rgba(255,255,255,0.07)", backdropFilter: "blur(10px)" }}
+                  style={{ background: "rgba(10,60,110,0.22)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(10px)" }}
                   data-testid={`step-${i + 1}`}>
-                  <div className="w-14 h-14 shrink-0 rounded-xl flex flex-col items-center justify-center gap-0.5"
+                  <div className="w-13 h-13 shrink-0 rounded-xl flex flex-col items-center justify-center gap-0.5 p-3"
                     style={{ background: "rgba(7,30,56,0.9)", border: "1px solid rgba(255,255,255,0.12)" }}>
                     <Ico size={18} className="text-white/60" />
-                    <span className="font-display text-[9px] text-white/30 tracking-widest">{step}</span>
+                    <span className="font-display text-[11px] text-white/35">{step}</span>
                   </div>
                   <div>
-                    <h3 className="font-display font-semibold text-base text-white tracking-wide">{title}</h3>
-                    <p className="text-white/45 text-xs mt-0.5 font-sans leading-relaxed">{desc}</p>
+                    <h3 className="font-display text-lg text-white">{title}</h3>
+                    <p className="text-white/45 text-sm font-sans leading-snug">{desc}</p>
                   </div>
                 </motion.div>
               ))}
@@ -731,14 +822,14 @@ export default function Home() {
           </motion.div>
         </section>
 
-        <OceanDivider />
+        <WaveDivider color="rgba(2,8,22,0.99)" />
 
         {/* ── Footer ─────────────────────────────────────────────────────── */}
-        <footer id="community" className="relative z-10 py-12 px-6 text-center"
+        <footer id="community" className="relative z-10 py-10 px-5 sm:px-8 text-center"
           style={{ background: "rgba(2,8,22,0.99)" }}>
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.9 }}
             className="max-w-lg mx-auto">
-            <motion.img src="/bob-nobg.png" alt="Bob" className="w-20 h-20 mx-auto mb-5 object-contain"
+            <motion.img src="/bob-nobg.png" alt="Bob" className="w-20 h-20 mx-auto mb-4 object-contain"
               style={{ filter: "drop-shadow(0 8px 24px rgba(255,140,0,0.4))" }}
               animate={{ y: [0, -10, 0], rotate: [-2, 2, -2] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }} />
 
@@ -747,21 +838,21 @@ export default function Home() {
               <SeaStarIcon size={14} className="text-white/25" />
               <div className="h-px w-12" style={{ background: "rgba(255,255,255,0.12)" }} />
             </div>
-            <h3 className="font-display font-bold text-2xl mb-1.5 text-white tracking-[0.15em] uppercase">Join the Current</h3>
-            <p className="text-white/35 mb-7 text-xs font-sans tracking-[0.2em] uppercase">Ride the wave or miss the tide</p>
+            <h3 className="font-display text-3xl mb-1 text-white">Join the Current</h3>
+            <p className="text-white/35 mb-5 text-xs font-sans tracking-[0.2em] uppercase">Ride the wave or miss the tide</p>
 
-            <div className="flex justify-center gap-3 mb-8">
-              <Button size="lg" className="h-11 px-7 rounded-full font-display font-semibold text-white text-xs tracking-[0.15em] uppercase"
+            <div className="flex justify-center gap-3 mb-6">
+              <Button size="lg" className="h-11 px-6 rounded-full font-display text-white text-base"
                 style={{ background: "rgba(10,70,130,0.9)", border: "1px solid rgba(255,255,255,0.15)" }} data-testid="button-telegram">
                 <Send className="mr-2" size={14} /> Telegram
               </Button>
-              <Button size="lg" className="h-11 px-7 rounded-full font-display font-semibold text-white text-xs tracking-[0.15em] uppercase"
+              <Button size="lg" className="h-11 px-6 rounded-full font-display text-white text-base"
                 style={{ background: "rgba(7,30,56,0.9)", border: "1px solid rgba(255,255,255,0.12)" }} data-testid="button-buy-footer">
                 <TridentIcon size={14} className="mr-2" /> Buy $BOB
               </Button>
             </div>
 
-            <div className="flex items-center justify-center gap-2 mb-6">
+            <div className="flex items-center justify-center gap-2 mb-5">
               {[Anchor, CoralIcon, WheelIcon, JellyfishIcon, SeaStarIcon].map((Ico, i) => (
                 <div key={i} className="w-7 h-7 rounded-full flex items-center justify-center"
                   style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
