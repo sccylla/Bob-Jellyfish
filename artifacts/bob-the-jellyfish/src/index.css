@@ -203,6 +203,28 @@
   animation: drift 8s linear infinite;
 }
 
+@keyframes fish-rtl {
+  0%   { transform: translateX(110vw); opacity: 0; }
+  5%   { opacity: 1; }
+  95%  { opacity: 1; }
+  100% { transform: translateX(-15vw); opacity: 0; }
+}
+
+@keyframes fish-ltr {
+  0%   { transform: translateX(-15vw) scaleX(-1); opacity: 0; }
+  5%   { opacity: 1; }
+  95%  { opacity: 1; }
+  100% { transform: translateX(110vw) scaleX(-1); opacity: 0; }
+}
+
+.animate-fish-rtl {
+  animation: fish-rtl linear infinite;
+}
+
+.animate-fish-ltr {
+  animation: fish-ltr linear infinite;
+}
+
 .glass-panel {
   background: rgba(13, 33, 55, 0.4);
   backdrop-filter: blur(12px);
