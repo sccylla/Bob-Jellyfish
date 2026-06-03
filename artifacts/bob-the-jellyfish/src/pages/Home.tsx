@@ -163,63 +163,213 @@ function useOceanSound() {
 
 // ─── Loading Screen ───────────────────────────────────────────────────────────
 function LoadingScreen({ onDone }: { onDone: () => void }) {
-  useEffect(() => { const t = setTimeout(onDone, 3800); return () => clearTimeout(t); }, [onDone]);
+  // Wake bubbles — emitted along the walk path as Bob passes
+  const [wake, setWake] = useState<{ id: number; xVw: number; size: number; drift: number }[]>([]);
+  const wakeRef = useRef(0);
+
+  useEffect(() => {
+    const WALK_DELAY = 1900;   // ms before Bob starts walking
+    const WALK_DUR   = 4200;   // ms Bob takes to cross
+    const STEPS      = 18;     // number of wake bursts
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    for (let i = 0; i < STEPS; i++) {
+      const t = WALK_DELAY + (i / STEPS) * WALK_DUR;
+      timers.push(setTimeout(() => {
+        const xVw = (i / STEPS) * 110;
+        // each burst: 3 small bubbles
+        for (let b = 0; b < 3; b++) {
+          const id = wakeRef.current++;
+          const offset = (Math.random() - 0.5) * 6;
+          const size   = Math.random() * 7 + 4;
+          const drift  = (Math.random() - 0.5) * 30;
+          setWake(p => [...p.slice(-60), { id, xVw: xVw + offset, size, drift }]);
+        }
+      }, t));
+    }
+
+    const done = setTimeout(onDone, 6400);
+    return () => { timers.forEach(clearTimeout); clearTimeout(done); };
+  }, [onDone]);
+
   return (
-    <motion.div className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden"
-      style={{ background: "linear-gradient(180deg, #071e38 0%, #0a4a7a 50%, #0e7ab5 100%)" }}
-      exit={{ opacity: 0 }} transition={{ duration: 0.7 }}>
+    <motion.div className="fixed inset-0 z-[100] overflow-hidden"
+      style={{ background: "radial-gradient(ellipse at 50% 0%, #0a3a6a 0%, #030d1e 60%, #000408 100%)" }}
+      exit={{ opacity: 0, scale: 1.04 }} transition={{ duration: 0.9, ease: "easeInOut" }}>
+
+      {/* ── Vignette ── */}
+      <div className="absolute inset-0 pointer-events-none z-10"
+        style={{ background: "radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.75) 100%)" }} />
+
+      {/* ── Cinematic letterbox bars ── */}
+      <motion.div className="absolute top-0 left-0 right-0 z-20 bg-black"
+        initial={{ height: "18vh" }} animate={{ height: "10vh" }} transition={{ delay: 1.2, duration: 1.2, ease: "easeInOut" }} />
+      <motion.div className="absolute bottom-0 left-0 right-0 z-20 bg-black"
+        initial={{ height: "18vh" }} animate={{ height: "10vh" }} transition={{ delay: 1.2, duration: 1.2, ease: "easeInOut" }} />
+
+      {/* ── Animated god rays ── */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[10, 26, 42, 58, 74, 88].map((l, i) => (
-          <div key={i} className="absolute top-0 h-full opacity-[0.08]"
-            style={{ left: `${l}%`, width: "50px", background: "linear-gradient(180deg, #fff 0%, transparent 65%)", transform: `skewX(${(i - 2.5) * 7}deg)` }} />
+        {[8, 19, 30, 44, 57, 68, 79, 91].map((l, i) => (
+          <motion.div key={i} className="absolute top-0 h-[80%]"
+            style={{ left: `${l}%`, width: "44px", background: "linear-gradient(180deg, rgba(100,180,255,0.12) 0%, transparent 100%)", transform: `skewX(${(i - 3.5) * 5}deg)`, transformOrigin: "top center" }}
+            initial={{ scaleY: 0, opacity: 0 }}
+            animate={{ scaleY: 1, opacity: [0, 0.9, 0.5, 0.8, 0.5] }}
+            transition={{ delay: 0.3 + i * 0.08, duration: 1.4, ease: "easeOut", opacity: { repeat: Infinity, duration: 4 + i * 0.5, delay: 1.5 } }} />
         ))}
       </div>
+
+      {/* ── Sonar ping rings ── */}
+      {[0, 0.5, 1.0].map((d, i) => (
+        <motion.div key={i} className="absolute rounded-full border border-white/10 pointer-events-none"
+          style={{ top: "40%", left: "50%", x: "-50%", y: "-50%", width: 80, height: 80 }}
+          initial={{ scale: 0, opacity: 0.6 }}
+          animate={{ scale: 8, opacity: 0 }}
+          transition={{ delay: 0.9 + d, duration: 2.2, ease: "easeOut" }} />
+      ))}
+
+      {/* ── Background bubbles ── */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {Array.from({ length: 20 }).map((_, i) => (
+        {Array.from({ length: 22 }).map((_, i) => (
           <div key={i} className="animate-bubble absolute bottom-0"
-            style={{ left: `${(i / 20) * 100}vw`, width: `${Math.random() * 20 + 6}px`, height: `${Math.random() * 20 + 6}px`, animationDelay: `${Math.random() * 5}s`, animationDuration: `${Math.random() * 8 + 9}s` }} />
+            style={{ left: `${(i / 22) * 100}vw`, width: `${Math.random() * 16 + 5}px`, height: `${Math.random() * 16 + 5}px`, animationDelay: `${Math.random() * 6}s`, animationDuration: `${Math.random() * 8 + 10}s` }} />
         ))}
       </div>
-      {/* Seaweed */}
-      {[{ side: "left", items: [90, 70, 110] }, { side: "right", items: [75, 105, 65] }].map(({ side, items }) => (
-        <div key={side} className={`absolute bottom-0 ${side}-8 flex gap-5`}>
-          {items.map((h, i) => (
-            <div key={i} className="animate-sway" style={{ animationDelay: `${i * 0.4}s` }}>
-              <svg width="26" height={h} viewBox={`0 0 26 ${h}`} fill="none">
-                <path d={`M13 ${h} Q${side === "left" ? 3 : 23} ${h * .8} 13 ${h * .6} Q${side === "right" ? 3 : 23} ${h * .4} 13 ${h * .2} Q${side === "left" ? 3 : 23} 5 13 0`} stroke="#0a6030" strokeWidth="4" strokeLinecap="round" fill="none" />
+
+      {/* ── Seaweed strips ── */}
+      {[{ s: "left", ws: [110, 80, 130, 70] }, { s: "right", ws: [90, 120, 65, 100] }].map(({ s, ws }) => (
+        <div key={s} className={`absolute bottom-[10vh] ${s}-4 flex gap-3`}>
+          {ws.map((h, i) => (
+            <motion.div key={i} className="animate-sway origin-bottom" style={{ animationDelay: `${i * 0.35}s` }}
+              initial={{ scaleY: 0, opacity: 0 }} animate={{ scaleY: 1, opacity: 1 }}
+              transition={{ delay: 0.6 + i * 0.12, duration: 0.9, ease: "easeOut" }}>
+              <svg width="22" height={h} viewBox={`0 0 22 ${h}`} fill="none">
+                <path d={`M11 ${h} Q${s==="left"?2:20} ${h*.78} 11 ${h*.58} Q${s==="right"?2:20} ${h*.38} 11 ${h*.2} Q${s==="left"?2:20} 4 11 0`}
+                  stroke="#0a6535" strokeWidth="3.5" strokeLinecap="round" fill="none" />
               </svg>
-            </div>
+            </motion.div>
           ))}
         </div>
       ))}
-      <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#071e38]/80 to-transparent" />
 
-      {/* Bob jumping */}
-      <motion.div className="absolute" style={{ bottom: "17%", left: 0 }}
-        animate={{ x: ["calc(-160px)", "calc(100vw + 160px)"] }}
-        transition={{ duration: 3.2, ease: "linear", delay: 0.3 }}>
-        <motion.div animate={{ y: [0, -130, 0, -110, 0, -100, 0, -80, 0, -60, 0] }}
-          transition={{ duration: 3.2, delay: 0.3, times: [0, .1, .2, .3, .4, .5, .6, .7, .8, .9, 1], ease: "easeInOut" }}>
-          <motion.img src="/bob-nobg.png" alt="Bob"
-            style={{ width: 120, height: 120, objectFit: "contain", filter: "drop-shadow(0 8px 20px rgba(255,140,0,0.5))" }}
-            animate={{ rotate: [0, -10, 0, -10, 0, -10, 0, -10, 0, -10, 0] }}
-            transition={{ duration: 3.2, delay: 0.3, times: [0, .1, .2, .3, .4, .5, .6, .7, .8, .9, 1] }} />
+      {/* ── Ocean floor ── */}
+      <div className="absolute bottom-[10vh] left-0 right-0 h-6 pointer-events-none"
+        style={{ background: "linear-gradient(0deg, rgba(4,20,48,0.9) 0%, transparent 100%)" }} />
+
+      {/* ── Wake bubbles (Bob's trail) ── */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ bottom: "10vh" }}>
+        {wake.map(b => (
+          <motion.div key={b.id} className="absolute rounded-full"
+            style={{
+              bottom: "12vh", left: `${b.xVw}vw`,
+              width: b.size, height: b.size,
+              background: "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.85), rgba(180,220,255,0.15))",
+              boxShadow: "inset 0 0 3px rgba(255,255,255,0.5)",
+            }}
+            initial={{ y: 0, opacity: 0, scale: 0 }}
+            animate={{ y: -(80 + Math.random() * 120), x: b.drift, opacity: [0, 0.8, 0.5, 0], scale: [0, 1, 0.8, 0.4] }}
+            transition={{ duration: 2.2 + Math.random(), ease: "easeOut" }} />
+        ))}
+      </div>
+
+      {/* ── Bob WALKING ── */}
+      <motion.div className="absolute z-10" style={{ bottom: "11vh" }}
+        initial={{ x: "calc(-160px)" }}
+        animate={{ x: "calc(110vw)" }}
+        transition={{ delay: 1.9, duration: 4.2, ease: "linear" }}>
+        {/* Walk cycle wrapper — bounce + lean */}
+        <motion.div
+          animate={{
+            y:       [0, -44, 0, -44, 0, -44, 0, -44, 0, -44, 0, -44, 0, -44, 0],
+            rotate:  [9,   0,-9,   0, 9,   0,-9,   0, 9,   0,-9,   0, 9,   0, 9],
+            scaleX:  [1, .94, 1, .94, 1, .94, 1, .94, 1, .94, 1, .94, 1, .94, 1],
+            scaleY:  [1,1.06, 1,1.06, 1,1.06, 1,1.06, 1,1.06, 1,1.06, 1,1.06, 1],
+          }}
+          transition={{
+            delay: 1.9,
+            duration: 4.2,
+            times: [0,.071,.143,.214,.286,.357,.429,.5,.571,.643,.714,.786,.857,.929,1],
+            ease: "easeInOut",
+          }}>
+          <motion.img src="/bob-nobg.png" alt="Bob walking"
+            style={{ width: 140, height: 140, objectFit: "contain" }}
+            animate={{
+              filter: [
+                "drop-shadow(0 12px 28px rgba(255,140,0,0.55)) brightness(1)",
+                "drop-shadow(0 6px 16px rgba(255,140,0,0.35)) brightness(0.95)",
+                "drop-shadow(0 12px 28px rgba(255,140,0,0.55)) brightness(1)",
+              ]
+            }}
+            transition={{ delay: 1.9, duration: 0.6, repeat: 7, ease: "easeInOut" }} />
         </motion.div>
       </motion.div>
 
-      <motion.div className="relative z-10 text-center flex flex-col items-center gap-4"
-        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-        <div className="flex items-center gap-3 mb-2">
-          <div className="h-px w-16 bg-gradient-to-r from-transparent to-white/40" />
-          <JellyfishIcon size={22} className="text-white/50" />
-          <div className="h-px w-16 bg-gradient-to-l from-transparent to-white/40" />
+      {/* ── Title block (centre stage) ── */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none" style={{ paddingBottom: "8vh" }}>
+
+        {/* Top ornament line */}
+        <motion.div className="flex items-center gap-4 mb-5"
+          initial={{ opacity: 0, scaleX: 0 }} animate={{ opacity: 1, scaleX: 1 }}
+          transition={{ delay: 0.5, duration: 0.9, ease: "easeOut" }}>
+          <div className="h-px w-24" style={{ background: "linear-gradient(to right, transparent, rgba(100,180,255,0.5))" }} />
+          <JellyfishIcon size={20} className="text-white/40" />
+          <div className="h-px w-24" style={{ background: "linear-gradient(to left, transparent, rgba(100,180,255,0.5))" }} />
+        </motion.div>
+
+        {/* "BOB" — massive dramatic reveal */}
+        <div className="relative overflow-visible">
+          <motion.h1
+            className="font-display font-black leading-none tracking-[0.25em] select-none"
+            style={{ fontSize: "clamp(4.5rem,14vw,11rem)", color: "transparent",
+              WebkitTextStroke: "1.5px rgba(255,255,255,0.15)",
+              background: "linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(140,200,255,0.7) 100%)",
+              WebkitBackgroundClip: "text", backgroundClip: "text",
+            }}
+            initial={{ opacity: 0, y: 40, filter: "blur(20px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            transition={{ delay: 0.7, duration: 1.1, ease: [0.16, 1, 0.3, 1] }}>
+            BOB
+          </motion.h1>
+          {/* Dramatic glow bloom behind "BOB" */}
+          <motion.div className="absolute inset-0 pointer-events-none"
+            style={{ background: "radial-gradient(ellipse at center, rgba(14,122,181,0.35) 0%, transparent 70%)", filter: "blur(30px)", zIndex: -1 }}
+            initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: [0, 1, 0.6], scale: [0.5, 1.3, 1.1] }}
+            transition={{ delay: 0.7, duration: 1.4, ease: "easeOut" }} />
         </div>
-        <h1 className="font-display font-bold text-4xl md:text-6xl tracking-[0.2em] text-white uppercase"
-          style={{ textShadow: "0 0 40px rgba(14,122,181,0.8), 0 4px 16px rgba(0,0,0,0.5)", letterSpacing: "0.22em" }}>
-          Bob The Jellyfish
-        </h1>
-        <p className="text-white/50 text-sm font-sans tracking-[0.4em] uppercase">Descending into the deep...</p>
+
+        {/* "THE JELLYFISH" */}
+        <motion.h2
+          className="font-display font-semibold tracking-[0.35em] text-white/80 uppercase"
+          style={{ fontSize: "clamp(1rem,3.5vw,2.6rem)", letterSpacing: "0.38em" }}
+          initial={{ opacity: 0, y: 20, filter: "blur(10px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          transition={{ delay: 1.2, duration: 0.9, ease: "easeOut" }}>
+          The Jellyfish
+        </motion.h2>
+
+        {/* Divider */}
+        <motion.div className="flex items-center gap-3 mt-4 mb-3"
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.55, duration: 0.7 }}>
+          <div className="h-px w-16" style={{ background: "rgba(255,255,255,0.12)" }} />
+          <SeaStarIcon size={10} className="text-white/25" />
+          <div className="h-px w-16" style={{ background: "rgba(255,255,255,0.12)" }} />
+        </motion.div>
+
+        {/* Tagline */}
+        <motion.p className="font-sans text-white/40 tracking-[0.45em] uppercase text-xs"
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.7, duration: 0.9 }}>
+          Descending into the deep
+        </motion.p>
+      </div>
+
+      {/* ── Depth readout (bottom centre) ── */}
+      <motion.div className="absolute z-10 left-0 right-0 flex flex-col items-center gap-1"
+        style={{ bottom: "11vh" }}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5, duration: 1 }}>
+        <p className="font-sans text-white/20 text-[10px] tracking-[0.5em] uppercase">
+          — 4,200 ft · Below Surface —
+        </p>
       </motion.div>
+
     </motion.div>
   );
 }
