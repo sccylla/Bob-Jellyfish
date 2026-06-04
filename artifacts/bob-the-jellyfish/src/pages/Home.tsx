@@ -232,42 +232,23 @@ function WaterRipples() {
 }
 
 // ─── Ambient Ocean Sound ──────────────────────────────────────────────────────
-// Split into unlock() (must run in a gesture callstack) and startAudio() (can
-// run any time after unlock). This allows iOS Safari to hear the sound even when
-// the AudioContext is created during the loading screen and audio starts after.
+// Strategy:
+//   • After loading: create AudioContext + build audio graph immediately.
+//     Chrome/Firefox/Android start playing right away.
+//     iOS Safari creates a suspended ctx (audio is scheduled but paused).
+//   • Gesture listeners (touchstart/click etc.) call ctx.resume() to unpause iOS.
+//   • Toggle button: handles both "not started" and "started but suspended" cases.
 function useOceanSound() {
   const [playing, setPlaying] = useState(false);
-  const ctxRef      = useRef<AudioContext | null>(null);
-  const sourceRef   = useRef<AudioBufferSourceNode | null>(null);
-  const gainRef     = useRef<GainNode | null>(null);
-  const unlockedRef = useRef(false);  // true once ctx created inside a gesture
+  const ctxRef    = useRef<AudioContext | null>(null);
+  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const gainRef   = useRef<GainNode | null>(null);
 
-  // MUST be called synchronously inside a user-gesture handler
-  const unlock = useCallback(() => {
-    if (unlockedRef.current) return;
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    ctxRef.current = ctx;
-    ctx.resume().catch(() => {});
-    // Play a 1-frame silent buffer — fully satisfies iOS gesture requirement
-    const silentBuf = ctx.createBuffer(1, 1, ctx.sampleRate);
-    const silentSrc = ctx.createBufferSource();
-    silentSrc.buffer = silentBuf;
-    silentSrc.connect(ctx.destination);
-    silentSrc.start(0);
-    unlockedRef.current = true;
-  }, []);
-
-  // Build the audio graph and start playing — safe to call outside a gesture
-  // as long as unlock() was already called (iOS ctx remains running after unlock)
-  const startAudio = useCallback(() => {
-    const ctx = ctxRef.current;
-    if (!ctx || ctx.state === 'closed') return;
-    if (gainRef.current) return; // already playing
-    ctx.resume().catch(() => {});
+  // Build the audio graph on the given ctx.
+  // Works even if ctx is suspended — audio will play once ctx resumes.
+  const buildGraph = useCallback((ctx: AudioContext) => {
+    if (gainRef.current) return; // already built
     const sampleRate = ctx.sampleRate;
-
     const buf = ctx.createBuffer(2, sampleRate * 4, sampleRate);
     for (let ch = 0; ch < 2; ch++) {
       const data = buf.getChannelData(ch);
@@ -280,47 +261,68 @@ function useOceanSound() {
       }
     }
     const src = ctx.createBufferSource();
-    src.buffer = buf;
-    src.loop = true;
+    src.buffer = buf; src.loop = true;
 
     const lpf = ctx.createBiquadFilter();
-    lpf.type = "lowpass";
-    lpf.frequency.value = 350;
-    lpf.Q.value = 0.8;
+    lpf.type = "lowpass"; lpf.frequency.value = 350; lpf.Q.value = 0.8;
 
     const peaking = ctx.createBiquadFilter();
-    peaking.type = "peaking";
-    peaking.frequency.value = 80;
-    peaking.gain.value = 8;
+    peaking.type = "peaking"; peaking.frequency.value = 80; peaking.gain.value = 8;
 
     const lfo = ctx.createOscillator();
-    lfo.type = "sine";
-    lfo.frequency.value = 0.07;
+    lfo.type = "sine"; lfo.frequency.value = 0.07;
     const lfoGain = ctx.createGain();
     lfoGain.gain.value = 60;
-    lfo.connect(lfoGain);
-    lfoGain.connect(lpf.frequency);
-    lfo.start();
+    lfo.connect(lfoGain); lfoGain.connect(lpf.frequency); lfo.start();
 
     const gain = ctx.createGain();
     gain.gain.value = 0;
     gainRef.current = gain;
 
-    src.connect(lpf);
-    lpf.connect(peaking);
-    peaking.connect(gain);
-    gain.connect(ctx.destination);
-    src.start();
-    sourceRef.current = src;
+    src.connect(lpf); lpf.connect(peaking); peaking.connect(gain); gain.connect(ctx.destination);
+    src.start(); sourceRef.current = src;
     gain.gain.linearRampToValueAtTime(0.28, ctx.currentTime + 2);
-    setPlaying(true);
+
+    // Mark as playing now (Chrome) or when ctx resumes (iOS)
+    if (ctx.state === 'running') {
+      setPlaying(true);
+    } else {
+      const onStateChange = () => {
+        if (ctx.state === 'running') { setPlaying(true); ctx.removeEventListener('statechange', onStateChange); }
+      };
+      ctx.addEventListener('statechange', onStateChange);
+    }
   }, []);
 
-  // Toggle called from a button click — always a gesture, so unlock is safe here too
+  // Create ctx + build graph. Chrome: plays immediately. iOS: suspended until gesture.
+  const tryAutoplay = useCallback(() => {
+    if (gainRef.current) return;
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    if (!ctxRef.current || ctxRef.current.state === 'closed') {
+      ctxRef.current = new AudioCtx();
+    }
+    const ctx = ctxRef.current;
+    ctx.resume().catch(() => {}); // no-op on iOS without gesture; works on Chrome
+    buildGraph(ctx);
+  }, [buildGraph]);
+
+  // Called from a gesture handler (touchstart/click) — resumes suspended ctx on iOS.
+  // Also creates ctx if none exists (e.g. user taps before loading ends).
+  const resumeFromGesture = useCallback(() => {
+    if (!ctxRef.current || ctxRef.current.state === 'closed') {
+      tryAutoplay();
+      return;
+    }
+    const ctx = ctxRef.current;
+    ctx.resume().catch(() => {});    // key: this IS inside a gesture → iOS unlocks
+    if (!gainRef.current) buildGraph(ctx); // build graph if tryAutoplay was skipped
+  }, [tryAutoplay, buildGraph]);
+
   const toggle = useCallback(() => {
     if (!playing) {
-      if (!unlockedRef.current) unlock(); // safe: button click IS a gesture
-      startAudio();
+      // toggle is always a button click = gesture → resumeFromGesture handles iOS
+      resumeFromGesture();
     } else {
       const gain = gainRef.current;
       const ctx  = ctxRef.current;
@@ -329,22 +331,19 @@ function useOceanSound() {
         setTimeout(() => {
           try { sourceRef.current?.stop(); } catch {}
           try { if (ctx.state !== 'closed') ctx.close().catch(() => {}); } catch {}
-          ctxRef.current    = null;
-          gainRef.current   = null;
-          sourceRef.current = null;
-          unlockedRef.current = false; // reset so unlock works again on next start
+          ctxRef.current = gainRef.current = sourceRef.current = null;
         }, 1100);
       }
       setPlaying(false);
     }
-  }, [playing, unlock, startAudio]);
+  }, [playing, resumeFromGesture]);
 
   useEffect(() => () => {
     try { sourceRef.current?.stop(); } catch {}
     try { const c = ctxRef.current; if (c && c.state !== 'closed') c.close().catch(() => {}); } catch {}
   }, []);
 
-  return { playing, toggle, unlock, startAudio, unlockedRef };
+  return { playing, toggle, tryAutoplay, resumeFromGesture };
 }
 
 // ─── Loading Screen ───────────────────────────────────────────────────────────
@@ -585,14 +584,14 @@ function BobBubbles() {
 }
 
 // ─── Alive Bob ────────────────────────────────────────────────────────────────
-function AliveBob() {
+function AliveBob({ className = "" }: { className?: string }) {
   const glowCtrl = useAnimationControls();
   useEffect(() => {
     (async () => { for (;;) { await glowCtrl.start({ scale: 1.12, opacity: 0.55, transition: { duration: 2.5, ease: "easeInOut" } }); await glowCtrl.start({ scale: 1, opacity: 0.3, transition: { duration: 2.5, ease: "easeInOut" } }); } })();
   }, [glowCtrl]);
 
   return (
-    <div className="relative flex items-center justify-center" style={{ width: "min(460px, 85vw)", height: "min(460px, 85vw)" }}>
+    <div className={`relative flex items-center justify-center ${className}`} style={{ aspectRatio: "1" }}>
       <motion.div animate={glowCtrl} className="absolute rounded-full pointer-events-none"
         style={{ inset: "-10%", background: "radial-gradient(circle, rgba(0,180,255,0.2) 0%, rgba(0,100,200,0.06) 60%, transparent 80%)", filter: "blur(20px)" }} />
       <motion.div className="absolute rounded-full pointer-events-none"
@@ -741,37 +740,34 @@ const SectionHeading = ({ icon: Icon, title, sub }: { icon: React.ComponentType<
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function Home() {
   const [loaded, setLoaded] = useState(false);
-  const { playing, toggle: toggleSound, unlock, startAudio, unlockedRef } = useOceanSound();
-  const loadedRef = useRef(false);
+  const { playing, toggle: toggleSound, tryAutoplay, resumeFromGesture } = useOceanSound();
 
   const { scrollY } = useScroll();
   const raysY = useTransform(scrollY, [0, 800], [0, -120]);
 
-  // Keep loadedRef in sync — gesture closures read this without re-subscribing
-  useEffect(() => { loadedRef.current = loaded; }, [loaded]);
-
-  // ── Step A: listen from VERY FIRST MOUNT so any tap during the loading screen
-  //   is captured. iOS requires AudioContext creation inside the gesture callstack.
+  // ── After loading: try autoplay (Chrome/Firefox/Android play; iOS suspends)
   useEffect(() => {
-    let triggered = false;
-    const EVENTS = ["touchstart", "touchend", "click", "keydown", "scroll"] as const;
+    if (loaded) {
+      const t = setTimeout(tryAutoplay, 400);
+      return () => clearTimeout(t);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
+
+  // ── Gesture listeners from mount: resume iOS suspended ctx on first interaction
+  useEffect(() => {
+    let fired = false;
+    const EVENTS = ["touchstart", "touchend", "click", "keydown"] as const;
     const onGesture = () => {
-      if (triggered) return;
-      triggered = true;
+      if (fired) return;
+      fired = true;
       EVENTS.forEach(ev => document.removeEventListener(ev, onGesture));
-      unlock();                               // creates ctx + silent buffer → unlocks iOS
-      if (loadedRef.current) startAudio();    // start immediately if page already loaded
+      resumeFromGesture(); // resumes suspended ctx on iOS; no-op on Chrome (already running)
     };
     EVENTS.forEach(ev => document.addEventListener(ev, onGesture, { passive: true }));
     return () => EVENTS.forEach(ev => document.removeEventListener(ev, onGesture));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // ── Step B: when loading screen finishes, start audio if already unlocked
-  useEffect(() => {
-    if (loaded && unlockedRef.current && !playing) startAudio();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded]);
 
   return (
     <>
@@ -849,75 +845,76 @@ export default function Home() {
         </nav>
 
         {/* ── Hero ───────────────────────────────────────────────────────── */}
-        <section className="relative flex items-center justify-center pt-16 pb-4 z-10 overflow-hidden px-5 sm:px-8 md:px-12 lg:px-20 min-h-[100svh]">
-          <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-8 lg:gap-0 py-8 lg:py-0">
+        <section className="relative z-10 px-5 sm:px-8 md:px-12 lg:px-20 pt-20 pb-8 lg:pt-0 lg:pb-0 lg:min-h-screen lg:flex lg:items-center">
+          <div className="w-full max-w-7xl mx-auto flex flex-col-reverse lg:flex-row items-center gap-6 lg:gap-0 lg:py-24">
 
-            {/* Left */}
-            <motion.div className="relative z-10 flex flex-col gap-4 w-full lg:w-1/2"
-              initial={{ opacity: 0, x: -40 }} animate={{ opacity: loaded ? 1 : 0, x: loaded ? 0 : -40 }}
+            {/* Text — bottom on mobile, left on desktop */}
+            <motion.div className="relative z-10 flex flex-col items-center lg:items-start gap-4 w-full lg:w-1/2 text-center lg:text-left"
+              initial={{ opacity: 0, y: 30 }} animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : 30 }}
               transition={{ duration: 0.8, delay: 0.3 }}>
 
-              <div className="flex items-center gap-2">
-                <div className="h-px w-8" style={{ background: "rgba(255,255,255,0.25)" }} />
+              <div className="flex items-center justify-center lg:justify-start gap-2">
+                <div className="h-px w-6" style={{ background: "rgba(255,255,255,0.25)" }} />
                 <span className="font-sans text-[10px] tracking-[0.4em] text-white/50 uppercase">The TON Ocean</span>
+                <div className="h-px w-6" style={{ background: "rgba(255,255,255,0.25)" }} />
               </div>
 
               <div className="leading-none">
                 <h1 className="font-display leading-none"
-                  style={{ fontSize: "clamp(6.5rem,20vw,16rem)",
+                  style={{ fontSize: "clamp(5rem,16vw,16rem)",
                     background: "linear-gradient(160deg, #ffffff 0%, #a8f0ff 50%, #00d4ff 100%)",
                     WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
                     filter: "drop-shadow(0 4px 0 rgba(0,0,0,0.4)) drop-shadow(0 0 40px rgba(0,200,255,0.5))" }}>
                   BOB
                 </h1>
                 <h2 className="font-display leading-none"
-                  style={{ fontSize: "clamp(2.4rem,7vw,6.5rem)", marginTop: "-0.05em",
+                  style={{ fontSize: "clamp(1.8rem,6vw,6.5rem)", marginTop: "-0.05em",
                     color: "#ff9a3c",
                     textShadow: "0 3px 0 rgba(0,0,0,0.5), 0 0 30px rgba(255,140,50,0.4)" }}>
                   The Jellyfish
                 </h2>
               </div>
 
-              <p className="font-sans text-cyan-100/80 leading-relaxed max-w-xs sm:max-w-sm text-base sm:text-lg">
+              <p className="font-sans text-cyan-100/75 leading-relaxed max-w-xs text-sm sm:text-base">
                 Drifting through the currents of TON.<br />
                 Bioluminescent. Uncontrollable. Inevitable.
               </p>
 
-              <div className="flex flex-wrap gap-2.5">
-                <Button size="lg" className="h-14 px-8 rounded-full font-display text-white text-xl"
-                  style={{ background: "linear-gradient(135deg, #ff8c1a 0%, #e05a00 100%)", border: "none", boxShadow: "0 6px 0 rgba(0,0,0,0.35), 0 0 30px rgba(255,140,0,0.35)" }}
+              <div className="flex flex-wrap gap-2.5 justify-center lg:justify-start">
+                <Button size="lg" className="h-12 sm:h-14 px-6 sm:px-8 rounded-full font-display text-white text-lg sm:text-xl"
+                  style={{ background: "linear-gradient(135deg, #ff8c1a 0%, #e05a00 100%)", border: "none", boxShadow: "0 5px 0 rgba(0,0,0,0.35), 0 0 28px rgba(255,140,0,0.35)" }}
                   data-testid="button-buy-hero">
-                  <TridentIcon size={18} className="mr-2 shrink-0" /> Acquire $BOB
+                  <TridentIcon size={17} className="mr-2 shrink-0" /> Acquire $BOB
                 </Button>
                 <Button size="lg" variant="outline"
-                  className="h-14 px-8 rounded-full font-display text-xl text-cyan-300 hover:text-white"
+                  className="h-12 sm:h-14 px-6 sm:px-8 rounded-full font-display text-lg sm:text-xl text-cyan-300 hover:text-white"
                   style={{ border: "2px solid #00d4ff", background: "rgba(0,212,255,0.08)", boxShadow: "0 0 18px rgba(0,200,255,0.2)" }}
                   data-testid="button-learn-more">
-                  <NautilusIcon size={18} className="mr-2 shrink-0" /> Explore
+                  <NautilusIcon size={17} className="mr-2 shrink-0" /> Explore
                 </Button>
               </div>
 
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 justify-center lg:justify-start">
                 {[{ icon: Send, label: "Telegram" }, { icon: WheelIcon, label: "Twitter" }, { icon: Anchor, label: "TON" }].map(({ icon: Ico, label }, i) => (
                   <button key={i} aria-label={label} data-testid={`social-${label.toLowerCase()}`}
-                    className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110"
+                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all hover:scale-110"
                     style={{ background: "rgba(7,30,56,0.8)", border: "1px solid rgba(255,255,255,0.15)" }}>
-                    <Ico size={15} className="text-white/60" />
+                    <Ico size={14} className="text-white/60" />
                   </button>
                 ))}
               </div>
             </motion.div>
 
-            {/* Right — Bob */}
-            <motion.div className="relative z-10 flex items-center justify-center lg:w-1/2 w-full"
-              initial={{ opacity: 0, scale: 0.8, x: 40 }} animate={{ opacity: loaded ? 1 : 0, scale: loaded ? 1 : 0.8, x: loaded ? 0 : 40 }}
-              transition={{ duration: 0.9, delay: 0.4 }}>
-              <AliveBob />
+            {/* Bob — top on mobile, right on desktop */}
+            <motion.div className="relative z-10 flex items-center justify-center w-full lg:w-1/2"
+              initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: loaded ? 1 : 0, scale: loaded ? 1 : 0.85 }}
+              transition={{ duration: 0.9, delay: 0.2 }}>
+              <AliveBob className="w-[min(260px,68vw)] sm:w-[min(340px,60vw)] lg:w-[min(460px,46vw)]" />
             </motion.div>
           </div>
 
-          {/* Scroll hint — pinned to bottom of section */}
-          <motion.div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-white/30"
+          {/* Scroll hint */}
+          <motion.div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-white/30 hidden lg:flex"
             animate={{ y: [0, 7, 0] }} transition={{ repeat: Infinity, duration: 2.2 }}>
             <Waves size={15} />
             <span className="text-[8px] tracking-[0.4em] uppercase font-sans">Dive In</span>
