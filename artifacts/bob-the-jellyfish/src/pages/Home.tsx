@@ -603,6 +603,11 @@ const FISH = [
   { top: "13%", size: 20, dur: 30, delay: 4, dir: "rtl", color: "#e07000", op: 0.45 },
   { top: "48%", size: 12, dur: 42, delay: 15, dir: "ltr", color: "#1a5a9e", op: 0.35 },
   { top: "84%", size: 24, dur: 24, delay: 8, dir: "ltr", color: "#b03020", op: 0.4 },
+  { top: "28%", size: 16, dur: 32, delay: 12, dir: "ltr", color: "#1a6a9e", op: 0.4 },
+  { top: "66%", size: 22, dur: 26, delay: 18, dir: "rtl", color: "#cf8a1e", op: 0.42 },
+  { top: "9%",  size: 14, dur: 38, delay: 22, dir: "ltr", color: "#0a3060", op: 0.32 },
+  { top: "90%", size: 18, dur: 28, delay: 5,  dir: "rtl", color: "#0a2a50", op: 0.36 },
+  { top: "42%", size: 30, dur: 25, delay: 14, dir: "rtl", color: "#9e3020", op: 0.4 },
 ];
 function SwimmingFish() {
   return (
@@ -611,6 +616,107 @@ function SwimmingFish() {
         <div key={i} className={f.dir === "rtl" ? "animate-fish-rtl" : "animate-fish-ltr"}
           style={{ position: "absolute", top: f.top, animationDuration: `${f.dur}s`, animationDelay: `${f.delay}s`, color: f.color, opacity: f.op }}>
           <Fish size={f.size} strokeWidth={1.4} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Ambient Sea Creatures ────────────────────────────────────────────────────
+// Subtle dark silhouettes drifting through the deep — professional, low-opacity.
+// All silhouettes face left by default; the ltr CSS class flips them to face right.
+type SilProps = { size: number; color: string; op: number };
+
+const TurtleSil = ({ size, color, op }: SilProps) => (
+  <svg width={size} height={size * 0.64} viewBox="0 0 100 64" fill={color} opacity={op}>
+    <path d="M42 18 Q30 2 18 8 Q28 16 38 26 Z" />
+    <path d="M42 48 Q30 64 18 58 Q28 50 38 40 Z" />
+    <path d="M80 23 Q94 13 95 25 Q89 29 76 31 Z" />
+    <path d="M82 41 Q95 47 89 52 Q82 48 78 41 Z" />
+    <ellipse cx="56" cy="33" rx="30" ry="21" />
+    <ellipse cx="19" cy="29" rx="11" ry="8" />
+  </svg>
+);
+
+const RaySil = ({ size, color, op }: SilProps) => (
+  <svg width={size} height={size * 0.56} viewBox="0 0 100 56" fill={color} opacity={op}>
+    <path d="M6 28 C22 24 36 22 46 24 C56 8 84 8 96 16 C80 22 64 26 52 28 C64 30 80 34 96 40 C84 48 56 48 46 32 C36 34 22 32 6 28 Z" />
+    <path d="M70 27 L99 26 L72 30 Z" />
+  </svg>
+);
+
+const WhaleSil = ({ size, color, op }: SilProps) => (
+  <svg width={size} height={size * 0.4} viewBox="0 0 160 64" fill={color} opacity={op}>
+    <path d="M8 36 C34 20 78 18 118 24 C138 27 152 31 156 36 C150 40 136 44 118 46 C78 52 34 50 8 36 Z" />
+    <path d="M150 36 Q164 22 160 20 Q150 28 144 34 Z" />
+    <path d="M150 36 Q164 50 160 52 Q150 44 144 38 Z" />
+    <path d="M46 44 Q52 58 64 55 Q58 48 52 42 Z" />
+  </svg>
+);
+
+const SchoolSil = ({ size, color, op }: SilProps) => {
+  const f = [[0, 12], [14, 3], [15, 21], [29, 9], [30, 26], [44, 3], [45, 17], [59, 12]];
+  return (
+    <svg width={size} height={size * 0.5} viewBox="0 0 74 36" fill={color} opacity={op}>
+      {f.map(([x, y], i) => (
+        <g key={i} transform={`translate(${x},${y})`}>
+          <ellipse cx="5" cy="4" rx="5" ry="3" />
+          <path d="M10 4 L14 1 L14 7 Z" />
+        </g>
+      ))}
+    </svg>
+  );
+};
+
+const JellySil = ({ size, color, op }: SilProps) => (
+  <svg width={size} height={size * 1.4} viewBox="0 0 40 56" fill="none" opacity={op}>
+    <path d="M4 22 Q4 4 20 4 Q36 4 36 22 Q34 28 20 29 Q6 28 4 22 Z" fill={color} />
+    <g stroke={color} strokeWidth="2" strokeLinecap="round">
+      <path d="M9 28 Q7 40 10 52" />
+      <path d="M15 29 Q13 42 16 54" />
+      <path d="M20 29 Q20 42 20 55" />
+      <path d="M25 29 Q27 42 24 54" />
+      <path d="M31 28 Q33 40 30 52" />
+    </g>
+  </svg>
+);
+
+const CROSSERS: { kind: "turtle" | "ray" | "whale" | "school"; top: string; size: number; dur: number; delay: number; dir: string; color: string; op: number }[] = [
+  { kind: "whale",  top: "33%", size: 150, dur: 95, delay: 10, dir: "rtl", color: "#0a2848", op: 0.14 },
+  { kind: "ray",    top: "15%", size: 82,  dur: 48, delay: 16, dir: "ltr", color: "#0a2c50", op: 0.26 },
+  { kind: "ray",    top: "71%", size: 60,  dur: 56, delay: 38, dir: "rtl", color: "#0c2f54", op: 0.24 },
+  { kind: "turtle", top: "23%", size: 64,  dur: 52, delay: 0,  dir: "rtl", color: "#0c3358", op: 0.34 },
+  { kind: "turtle", top: "63%", size: 48,  dur: 60, delay: 30, dir: "ltr", color: "#123e62", op: 0.3 },
+  { kind: "school", top: "41%", size: 64,  dur: 40, delay: 6,  dir: "rtl", color: "#1a5a9e", op: 0.5 },
+  { kind: "school", top: "53%", size: 46,  dur: 46, delay: 22, dir: "ltr", color: "#b9832a", op: 0.42 },
+];
+
+const DRIFT_JELLIES = [
+  { left: "10%", size: 40, dur: 42, delay: 0,  op: 0.3,  color: "#37b0dd" },
+  { left: "82%", size: 30, dur: 52, delay: 16, op: 0.24, color: "#2596c9" },
+  { left: "45%", size: 56, dur: 64, delay: 32, op: 0.18, color: "#2ea2d4" },
+  { left: "90%", size: 24, dur: 48, delay: 46, op: 0.26, color: "#2596c9" },
+  { left: "28%", size: 32, dur: 56, delay: 24, op: 0.2,  color: "#37b0dd" },
+];
+
+function SeaCreatures() {
+  const reduce = useReducedMotion();
+  if (reduce) return null;
+  return (
+    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden hidden sm:block" aria-hidden="true">
+      {CROSSERS.map((c, i) => (
+        <div key={`c${i}`} className={c.dir === "rtl" ? "animate-fish-rtl" : "animate-fish-ltr"}
+          style={{ position: "absolute", top: c.top, animationDuration: `${c.dur}s`, animationDelay: `${c.delay}s`, filter: c.kind === "whale" ? "blur(1.2px)" : undefined }}>
+          {c.kind === "turtle" && <TurtleSil size={c.size} color={c.color} op={c.op} />}
+          {c.kind === "ray" && <RaySil size={c.size} color={c.color} op={c.op} />}
+          {c.kind === "whale" && <WhaleSil size={c.size} color={c.color} op={c.op} />}
+          {c.kind === "school" && <SchoolSil size={c.size} color={c.color} op={c.op} />}
+        </div>
+      ))}
+      {DRIFT_JELLIES.map((c, i) => (
+        <div key={`j${i}`} className="animate-jelly"
+          style={{ position: "absolute", top: 0, left: c.left, animationDuration: `${c.dur}s`, animationDelay: `${c.delay}s`, filter: "drop-shadow(0 0 7px rgba(0,180,255,0.45))" }}>
+          <JellySil size={c.size} color={c.color} op={c.op} />
         </div>
       ))}
     </div>
@@ -656,6 +762,22 @@ function OceanFloor() {
           {[{ cx: 9, cy: 13 }, { cx: 34, cy: 17 }, { cx: 54, cy: 22 }].map((c, i) => <circle key={i} cx={c.cx} cy={c.cy} r="5" fill="#8e44ad" opacity="0.65" />)}
         </svg>
       </div>
+      {/* Resting starfish */}
+      <svg className="absolute bottom-1 left-[22%]" width="30" height="30" viewBox="0 0 24 24" fill="#a85e1c" opacity="0.45">
+        <path d="M12 2l2.4 6.4 6.8.3-5.3 4.1 1.9 6.5L12 19l-5.8 4.3 1.9-6.5-5.3-4.1 6.8-.3L12 2z" />
+      </svg>
+      <svg className="absolute bottom-1.5 left-[58%] -scale-x-100" width="22" height="22" viewBox="0 0 24 24" fill="#7c4cae" opacity="0.4">
+        <path d="M12 2l2.4 6.4 6.8.3-5.3 4.1 1.9 6.5L12 19l-5.8 4.3 1.9-6.5-5.3-4.1 6.8-.3L12 2z" />
+      </svg>
+      {/* Crab */}
+      <svg className="absolute bottom-1 left-[40%]" width="42" height="30" viewBox="0 0 44 30" opacity="0.5">
+        <g stroke="#8a2f22" strokeWidth="2.2" strokeLinecap="round" fill="none">
+          <path d="M14 20 L6 27" /><path d="M15 17 L4 21" /><path d="M30 20 L38 27" /><path d="M29 17 L40 21" />
+          <path d="M14 13 Q6 8 4 12 Q3 16 8 16" /><path d="M30 13 Q38 8 40 12 Q41 16 36 16" />
+        </g>
+        <ellipse cx="22" cy="17" rx="10" ry="6.5" fill="#8a2f22" />
+        <circle cx="18.5" cy="10.5" r="1.6" fill="#8a2f22" /><circle cx="25.5" cy="10.5" r="1.6" fill="#8a2f22" />
+      </svg>
     </div>
   );
 }
@@ -845,6 +967,7 @@ export default function Home() {
         </motion.div>
         <Bubbles />
         <SwimmingFish />
+        <SeaCreatures />
         <OceanFloor />
 
         {/* ── Navbar ─────────────────────────────────────────────────────── */}
