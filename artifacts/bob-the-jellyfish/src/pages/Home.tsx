@@ -89,7 +89,7 @@ function JellyfishCursor() {
       pos.current.x += (mouse.current.x - pos.current.x) * 0.24;
       pos.current.y += (mouse.current.y - pos.current.y) * 0.24;
       // Square video — center Bob on the pointer
-      const S = hovering.current ? 76 : 62;
+      const S = hovering.current ? 52 : 42;
       const tx = pos.current.x - S / 2;
       const ty = pos.current.y - S / 2;
       if (jellyRef.current) {
@@ -121,7 +121,7 @@ function JellyfishCursor() {
           src="/bob-cursor.mp4"
           autoPlay loop muted playsInline
           className="w-full h-full object-contain"
-          style={{ display: "block" }}
+          style={{ display: "block", mixBlendMode: "screen" }}
         />
       </div>
     </>
