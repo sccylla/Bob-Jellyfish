@@ -118,11 +118,13 @@ function JellyfishCursor() {
       {/* Bob the jellyfish video cursor */}
       <div ref={jellyRef} className="fixed top-0 left-0 pointer-events-none z-[9999] hidden md:block" style={{ willChange: "transform" }}>
         <video
-          src="/bob-cursor.mp4"
           autoPlay loop muted playsInline
           className="w-full h-full object-contain"
-          style={{ display: "block", mixBlendMode: "screen" }}
-        />
+          style={{ display: "block" }}
+        >
+          <source src="/bob-cursor.webm" type="video/webm" />
+          <source src="/bob-cursor.mp4" type="video/mp4" />
+        </video>
       </div>
     </>
   );
