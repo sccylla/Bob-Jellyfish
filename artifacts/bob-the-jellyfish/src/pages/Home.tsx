@@ -351,6 +351,8 @@ function LoadingScreen({ onDone }: { onDone: () => void }) {
   // Wake bubbles — emitted along the walk path as Bob passes
   const [wake, setWake] = useState<{ id: number; xVw: number; size: number; drift: number }[]>([]);
   const wakeRef = useRef(0);
+  const [ready, setReady] = useState(false);
+  const reduce = useReducedMotion();
 
   useEffect(() => {
     const WALK_DELAY = 1900;   // ms before Bob starts walking
@@ -373,13 +375,14 @@ function LoadingScreen({ onDone }: { onDone: () => void }) {
       }, t));
     }
 
-    const done = setTimeout(onDone, 6400);
-    return () => { timers.forEach(clearTimeout); clearTimeout(done); };
+    const reveal = setTimeout(() => setReady(true), 3200);
+    return () => { timers.forEach(clearTimeout); clearTimeout(reveal); };
   }, [onDone]);
 
   return (
     <motion.div className="fixed inset-0 z-[100] overflow-hidden"
-      style={{ background: "radial-gradient(ellipse at 50% 0%, #0a3a6a 0%, #030d1e 60%, #000408 100%)" }}
+      style={{ background: "radial-gradient(ellipse at 50% 0%, #0a3a6a 0%, #030d1e 60%, #000408 100%)", cursor: ready ? "pointer" : "default" }}
+      onClick={() => { if (ready) onDone(); }}
       exit={{ opacity: 0, scale: 1.04 }} transition={{ duration: 0.9, ease: "easeInOut" }}>
 
       {/* ── Vignette ── */}
@@ -544,6 +547,38 @@ function LoadingScreen({ onDone }: { onDone: () => void }) {
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.7, duration: 0.9 }}>
           Descending into the deep
         </motion.p>
+
+        {/* Tap to dive in — entry gate (the tap unlocks ambient sound) */}
+        <AnimatePresence>
+          {ready && (
+            <motion.button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onDone(); }}
+              className="pointer-events-auto mt-10 px-9 py-3.5 rounded-full font-display font-bold tracking-[0.22em] uppercase text-sm text-white"
+              style={{
+                background: "linear-gradient(90deg, rgba(0,180,255,0.92) 0%, rgba(0,150,220,0.92) 55%, rgba(255,140,26,0.92) 100%)",
+                boxShadow: "0 0 34px rgba(0,200,255,0.55), inset 0 1px 0 rgba(255,255,255,0.35)",
+              }}
+              initial={{ opacity: 0, y: 18, filter: "blur(8px)" }}
+              animate={{ opacity: 1, y: reduce ? 0 : [0, -6, 0], filter: "blur(0px)" }}
+              exit={{ opacity: 0, y: 10 }}
+              transition={{ opacity: { duration: 0.6 }, filter: { duration: 0.6 }, ...(reduce ? {} : { y: { repeat: Infinity, duration: 2.4, ease: "easeInOut" } }) }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.96 }}>
+              🪼 Tap to dive in
+            </motion.button>
+          )}
+        </AnimatePresence>
+
+        {/* Sound hint */}
+        <AnimatePresence>
+          {ready && (
+            <motion.p className="pointer-events-none font-sans text-white/35 tracking-[0.3em] uppercase text-[10px] mt-4"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ delay: 0.3, duration: 0.6 }}>
+              🔊 sound on
+            </motion.p>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* ── Depth readout (bottom centre) ── */}
@@ -832,7 +867,7 @@ export default function Home() {
     <>
       <JellyfishCursor />
       <WaterRipples />
-      <AnimatePresence>{!loaded && <LoadingScreen onDone={() => setLoaded(true)} />}</AnimatePresence>
+      <AnimatePresence>{!loaded && <LoadingScreen onDone={() => { resumeFromGesture(); setLoaded(true); }} />}</AnimatePresence>
 
       <motion.div className="relative text-white overflow-x-hidden"
         style={{ background: "linear-gradient(180deg, #071e38 0%, #0a3c6a 20%, #0b5a95 45%, #083470 70%, #041830 100%)" }}
