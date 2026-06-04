@@ -88,16 +88,14 @@ function JellyfishCursor() {
     const loop = () => {
       pos.current.x += (mouse.current.x - pos.current.x) * 0.24;
       pos.current.y += (mouse.current.y - pos.current.y) * 0.24;
-      // Hotspot = top-center of dome, offset SVG so tip aligns with cursor
-      const W = hovering.current ? 58 : 48;
-      const H = hovering.current ? 78 : 65;
-      // top of dome sits at ~7% of height
-      const tx = pos.current.x - W / 2;
-      const ty = pos.current.y - H * 0.08;
+      // Square video — center Bob on the pointer
+      const S = hovering.current ? 76 : 62;
+      const tx = pos.current.x - S / 2;
+      const ty = pos.current.y - S / 2;
       if (jellyRef.current) {
         jellyRef.current.style.transform = `translate(${tx}px, ${ty}px)`;
-        jellyRef.current.style.width  = `${W}px`;
-        jellyRef.current.style.height = `${H}px`;
+        jellyRef.current.style.width  = `${S}px`;
+        jellyRef.current.style.height = `${S}px`;
         jellyRef.current.style.filter = hovering.current
           ? "drop-shadow(0 0 10px rgba(255,160,0,0.7)) drop-shadow(0 0 20px rgba(255,100,0,0.4))"
           : "drop-shadow(0 0 8px rgba(0,200,255,0.7)) drop-shadow(0 0 18px rgba(0,150,255,0.35))";
@@ -117,76 +115,14 @@ function JellyfishCursor() {
       {/* Cursor glow aura */}
       <div ref={glowRef} className="fixed top-0 left-0 w-40 h-40 rounded-full pointer-events-none z-[9997] hidden md:block"
         style={{ background: "radial-gradient(circle, rgba(0,200,255,0.07) 0%, transparent 70%)" }} />
-      {/* Jellyfish SVG cursor */}
+      {/* Bob the jellyfish video cursor */}
       <div ref={jellyRef} className="fixed top-0 left-0 pointer-events-none z-[9999] hidden md:block" style={{ willChange: "transform" }}>
-        <svg viewBox="0 0 60 80" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <radialGradient id="cDome" cx="38%" cy="30%" r="65%">
-              <stop offset="0%" stopColor="rgba(200,245,255,0.75)" />
-              <stop offset="100%" stopColor="rgba(0,160,230,0.38)" />
-            </radialGradient>
-            <radialGradient id="cGlow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="rgba(100,220,255,0.18)" />
-              <stop offset="100%" stopColor="rgba(0,0,0,0)" />
-            </radialGradient>
-          </defs>
-
-          {/* Outer glow blob */}
-          <ellipse cx="30" cy="28" rx="26" ry="22" fill="url(#cGlow)" />
-
-          {/* Dome body */}
-          <path d="M8 30 Q8 6 30 5 Q52 6 52 30 Q52 40 30 44 Q8 40 8 30 Z"
-            fill="url(#cDome)" stroke="rgba(0,210,255,0.85)" strokeWidth="1.8" />
-
-          {/* Sheen highlight */}
-          <ellipse cx="18" cy="16" rx="8" ry="6"
-            fill="rgba(255,255,255,0.28)" transform="rotate(-18,18,16)" />
-
-          {/* Spots */}
-          <circle cx="36" cy="14" r="3" fill="rgba(180,240,255,0.25)" />
-          <circle cx="40" cy="22" r="2" fill="rgba(180,240,255,0.2)" />
-
-          {/* Eyes — big cartoon whites */}
-          <circle cx="20" cy="25" r="5.5" fill="white" opacity="0.96" />
-          <circle cx="40" cy="25" r="5.5" fill="white" opacity="0.96" />
-          {/* Pupils */}
-          <circle cx="21.5" cy="26" r="3.2" fill="rgba(10,20,80,0.88)" />
-          <circle cx="41.5" cy="26" r="3.2" fill="rgba(10,20,80,0.88)" />
-          {/* Eye shines */}
-          <circle cx="22.8" cy="24.2" r="1.2" fill="white" />
-          <circle cx="42.8" cy="24.2" r="1.2" fill="white" />
-
-          {/* Smile */}
-          <path d="M22 33 Q30 39 38 33"
-            stroke="rgba(0,90,180,0.65)" strokeWidth="2.2" fill="none" strokeLinecap="round" />
-
-          {/* Bell scallop edge */}
-          <path d="M8 40 Q13 45 18 40 Q23 35 28 40 Q33 45 38 40 Q43 35 48 40 Q51 43 52 40"
-            stroke="rgba(0,200,255,0.45)" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-
-          {/* Tentacles with animation */}
-          <g stroke="rgba(0,200,255,0.75)" fill="none" strokeLinecap="round">
-            <path d="M12 43 Q9 54 12 65"  strokeWidth="2.2">
-              <animateTransform attributeName="transform" type="rotate" values="0 12 43;4 12 43;0 12 43;-4 12 43;0 12 43" dur="2.1s" repeatCount="indefinite" />
-            </path>
-            <path d="M20 45 Q17 57 20 68" strokeWidth="1.8">
-              <animateTransform attributeName="transform" type="rotate" values="0 20 45;-3 20 45;0 20 45;3 20 45;0 20 45" dur="2.4s" repeatCount="indefinite" />
-            </path>
-            <path d="M30 46 Q30 58 30 70" strokeWidth="2.2">
-              <animateTransform attributeName="transform" type="rotate" values="0 30 46;2 30 46;0 30 46;-2 30 46;0 30 46" dur="1.9s" repeatCount="indefinite" />
-            </path>
-            <path d="M40 45 Q43 57 40 68" strokeWidth="1.8">
-              <animateTransform attributeName="transform" type="rotate" values="0 40 45;3 40 45;0 40 45;-3 40 45;0 40 45" dur="2.3s" repeatCount="indefinite" />
-            </path>
-            <path d="M48 43 Q51 54 48 65" strokeWidth="2.2">
-              <animateTransform attributeName="transform" type="rotate" values="0 48 43;-4 48 43;0 48 43;4 48 43;0 48 43" dur="2.0s" repeatCount="indefinite" />
-            </path>
-          </g>
-
-          {/* Dome breathe animation */}
-          <animateTransform attributeName="transform" type="scale" values="1 1;1.02 0.98;1 1;0.98 1.02;1 1"
-            dur="3s" repeatCount="indefinite" additive="sum" />
-        </svg>
+        <video
+          src="/bob-cursor.mp4"
+          autoPlay loop muted playsInline
+          className="w-full h-full object-contain"
+          style={{ display: "block" }}
+        />
       </div>
     </>
   );
