@@ -70,6 +70,12 @@ const WheelIcon = ({ size = 24, className = "" }) => (
   </svg>
 );
 
+const XIcon = ({ size = 24, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.66l-5.214-6.817-5.97 6.817H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77Z" />
+  </svg>
+);
+
 // ─── Jellyfish Cursor ─────────────────────────────────────────────────────────
 function JellyfishCursor() {
   const jellyRef = useRef<HTMLDivElement>(null);
@@ -594,28 +600,67 @@ function AliveBob({ className = "" }: { className?: string }) {
   );
 }
 
+// ─── Cartoon Fish ─────────────────────────────────────────────────────────────
+// Colorful cartoon fish, authored facing LEFT; the ltr CSS class flips them right.
+const CartoonFish = ({ size, color, fin, op = 1 }: { size: number; color: string; fin: string; op?: number }) => (
+  <svg width={size} height={size * 0.72} viewBox="0 0 50 36" opacity={op}>
+    <path d="M35 18 L50 7 Q45 18 50 29 Z" fill={fin} />
+    <path d="M17 8 Q23 0 30 8 Z" fill={fin} />
+    <path d="M19 28 Q24 34 29 28 Z" fill={fin} />
+    <ellipse cx="20" cy="18" rx="18" ry="11" fill={color} />
+    <ellipse cx="18" cy="23" rx="13" ry="4.5" fill="rgba(255,255,255,0.22)" />
+    <path d="M23 19 Q28 25 32 20 Q28 18 23 19 Z" fill={fin} opacity="0.9" />
+    <circle cx="9" cy="14.5" r="3.6" fill="#fff" />
+    <circle cx="8" cy="14.5" r="1.8" fill="#16263f" />
+    <path d="M4 20.5 Q8.5 23.5 13 21" stroke="rgba(0,0,0,0.28)" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+  </svg>
+);
+
+const PufferFish = ({ size, color, fin, op = 1 }: { size: number; color: string; fin: string; op?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 46 42" opacity={op}>
+    <path d="M38 21 L46 15 L46 27 Z" fill={fin} />
+    <g fill={fin}>
+      <path d="M9 21 L2 18 L2 24 Z" />
+      <path d="M13 9 L10 3 L16 5 Z" />
+      <path d="M23 6 L22 0 L27 4 Z" />
+      <path d="M13 33 L10 39 L16 37 Z" />
+      <path d="M23 36 L22 42 L27 38 Z" />
+      <path d="M33 11 L34 5 L37 9 Z" />
+      <path d="M33 31 L34 37 L37 33 Z" />
+    </g>
+    <circle cx="23" cy="21" r="15" fill={color} />
+    <ellipse cx="21" cy="27" rx="10" ry="4" fill="rgba(255,255,255,0.22)" />
+    <circle cx="13" cy="17" r="3.4" fill="#fff" />
+    <circle cx="12" cy="17" r="1.7" fill="#16263f" />
+    <circle cx="11" cy="24" r="2.2" fill="rgba(255,130,130,0.45)" />
+    <path d="M8 22 Q12 25 16 22" stroke="rgba(0,0,0,0.28)" strokeWidth="1.3" fill="none" strokeLinecap="round" />
+  </svg>
+);
+
 // ─── Swimming Fish ────────────────────────────────────────────────────────────
 const FISH = [
-  { top: "20%", size: 28, dur: 20, delay: 2, dir: "ltr", color: "#0a2a50", op: 0.4 },
-  { top: "36%", size: 18, dur: 28, delay: 6, dir: "rtl", color: "#c0392b", op: 0.55 },
-  { top: "58%", size: 36, dur: 22, delay: 0, dir: "ltr", color: "#d4a200", op: 0.5 },
-  { top: "74%", size: 14, dur: 34, delay: 10, dir: "rtl", color: "#0a3060", op: 0.35 },
-  { top: "13%", size: 20, dur: 30, delay: 4, dir: "rtl", color: "#e07000", op: 0.45 },
-  { top: "48%", size: 12, dur: 42, delay: 15, dir: "ltr", color: "#1a5a9e", op: 0.35 },
-  { top: "84%", size: 24, dur: 24, delay: 8, dir: "ltr", color: "#b03020", op: 0.4 },
-  { top: "28%", size: 16, dur: 32, delay: 12, dir: "ltr", color: "#1a6a9e", op: 0.4 },
-  { top: "66%", size: 22, dur: 26, delay: 18, dir: "rtl", color: "#cf8a1e", op: 0.42 },
-  { top: "9%",  size: 14, dur: 38, delay: 22, dir: "ltr", color: "#0a3060", op: 0.32 },
-  { top: "90%", size: 18, dur: 28, delay: 5,  dir: "rtl", color: "#0a2a50", op: 0.36 },
-  { top: "42%", size: 30, dur: 25, delay: 14, dir: "rtl", color: "#9e3020", op: 0.4 },
+  { top: "20%", size: 42, dur: 22, delay: 2,  dir: "ltr", color: "#ff7a1a", fin: "#ffd2a6", op: 0.85 },
+  { top: "36%", size: 30, dur: 28, delay: 6,  dir: "rtl", color: "#1c8fd6", fin: "#0f5e94", op: 0.82 },
+  { top: "58%", size: 50, dur: 24, delay: 0,  dir: "ltr", color: "#ffce1f", fin: "#e8a300", op: 0.85 },
+  { top: "74%", size: 26, dur: 34, delay: 10, dir: "rtl", color: "#e0432e", fin: "#ffb3a6", op: 0.8 },
+  { top: "13%", size: 32, dur: 30, delay: 4,  dir: "rtl", color: "#ff8c1a", fin: "#ffe0c2", op: 0.82 },
+  { top: "48%", size: 22, dur: 42, delay: 15, dir: "ltr", color: "#1fc7b6", fin: "#0f8f82", op: 0.78 },
+  { top: "84%", size: 36, dur: 24, delay: 8,  dir: "ltr", color: "#8a5cd0", fin: "#c9aef0", op: 0.78 },
+  { top: "28%", size: 24, dur: 32, delay: 12, dir: "ltr", color: "#1c8fd6", fin: "#0f5e94", op: 0.8 },
+  { top: "66%", size: 30, dur: 26, delay: 18, dir: "rtl", color: "#ffce1f", fin: "#e8a300", op: 0.8 },
+  { top: "9%",  size: 22, dur: 38, delay: 22, dir: "ltr", color: "#1fc7b6", fin: "#0f8f82", op: 0.75 },
+  { top: "90%", size: 26, dur: 28, delay: 5,  dir: "rtl", color: "#ff7a1a", fin: "#ffd2a6", op: 0.8 },
+  { top: "42%", size: 40, dur: 25, delay: 14, dir: "rtl", color: "#e0432e", fin: "#ffb3a6", op: 0.8 },
 ];
 function SwimmingFish() {
+  const reduce = useReducedMotion();
+  if (reduce) return null;
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
       {FISH.map((f, i) => (
         <div key={i} className={f.dir === "rtl" ? "animate-fish-rtl" : "animate-fish-ltr"}
-          style={{ position: "absolute", top: f.top, animationDuration: `${f.dur}s`, animationDelay: `${f.delay}s`, color: f.color, opacity: f.op }}>
-          <Fish size={f.size} strokeWidth={1.4} />
+          style={{ position: "absolute", top: f.top, animationDuration: `${f.dur}s`, animationDelay: `${f.delay}s` }}>
+          <CartoonFish size={f.size} color={f.color} fin={f.fin} op={f.op} />
         </div>
       ))}
     </div>
@@ -654,19 +699,28 @@ const WhaleSil = ({ size, color, op }: SilProps) => (
   </svg>
 );
 
-const SchoolSil = ({ size, color, op }: SilProps) => {
+const SchoolSil = ({ size, color, fin, op }: SilProps & { fin: string }) => {
   const f = [[0, 12], [14, 3], [15, 21], [29, 9], [30, 26], [44, 3], [45, 17], [59, 12]];
   return (
-    <svg width={size} height={size * 0.5} viewBox="0 0 74 36" fill={color} opacity={op}>
+    <svg width={size} height={size * 0.5} viewBox="0 0 74 36" opacity={op}>
       {f.map(([x, y], i) => (
         <g key={i} transform={`translate(${x},${y})`}>
-          <ellipse cx="5" cy="4" rx="5" ry="3" />
-          <path d="M10 4 L14 1 L14 7 Z" />
+          <ellipse cx="5" cy="4" rx="5" ry="3" fill={color} />
+          <path d="M10 4 L14 1 L14 7 Z" fill={fin} />
+          <circle cx="3" cy="3.4" r="0.8" fill="#fff" />
         </g>
       ))}
     </svg>
   );
 };
+
+const DolphinSil = ({ size, color, op }: SilProps) => (
+  <svg width={size} height={size * 0.5} viewBox="0 0 100 50" fill={color} opacity={op}>
+    <path d="M6 30 C16 22 28 18 42 20 C58 22 72 18 84 10 C78 22 86 25 97 22 C86 31 70 35 54 35 C40 37 20 38 6 30 Z" />
+    <path d="M50 19 Q56 6 64 13 Q57 18 53 22 Z" />
+    <path d="M40 31 Q46 41 56 39 Q48 33 44 29 Z" />
+  </svg>
+);
 
 const JellySil = ({ size, color, op }: SilProps) => (
   <svg width={size} height={size * 1.4} viewBox="0 0 40 56" fill="none" opacity={op}>
@@ -681,14 +735,17 @@ const JellySil = ({ size, color, op }: SilProps) => (
   </svg>
 );
 
-const CROSSERS: { kind: "turtle" | "ray" | "whale" | "school"; top: string; size: number; dur: number; delay: number; dir: string; color: string; op: number }[] = [
-  { kind: "whale",  top: "33%", size: 150, dur: 95, delay: 10, dir: "rtl", color: "#0a2848", op: 0.14 },
-  { kind: "ray",    top: "15%", size: 82,  dur: 48, delay: 16, dir: "ltr", color: "#0a2c50", op: 0.26 },
-  { kind: "ray",    top: "71%", size: 60,  dur: 56, delay: 38, dir: "rtl", color: "#0c2f54", op: 0.24 },
-  { kind: "turtle", top: "23%", size: 64,  dur: 52, delay: 0,  dir: "rtl", color: "#0c3358", op: 0.34 },
-  { kind: "turtle", top: "63%", size: 48,  dur: 60, delay: 30, dir: "ltr", color: "#123e62", op: 0.3 },
-  { kind: "school", top: "41%", size: 64,  dur: 40, delay: 6,  dir: "rtl", color: "#1a5a9e", op: 0.5 },
-  { kind: "school", top: "53%", size: 46,  dur: 46, delay: 22, dir: "ltr", color: "#b9832a", op: 0.42 },
+const CROSSERS: { kind: "turtle" | "ray" | "whale" | "school" | "dolphin" | "puffer"; top: string; size: number; dur: number; delay: number; dir: string; color: string; fin?: string; op: number }[] = [
+  { kind: "whale",   top: "33%", size: 150, dur: 95, delay: 10, dir: "rtl", color: "#0a2848", op: 0.14 },
+  { kind: "dolphin", top: "19%", size: 100, dur: 44, delay: 26, dir: "ltr", color: "#103a5e", op: 0.22 },
+  { kind: "ray",     top: "15%", size: 82,  dur: 48, delay: 16, dir: "ltr", color: "#0a2c50", op: 0.26 },
+  { kind: "ray",     top: "71%", size: 60,  dur: 56, delay: 38, dir: "rtl", color: "#0c2f54", op: 0.24 },
+  { kind: "turtle",  top: "23%", size: 64,  dur: 52, delay: 0,  dir: "rtl", color: "#0c3358", op: 0.34 },
+  { kind: "turtle",  top: "63%", size: 48,  dur: 60, delay: 30, dir: "ltr", color: "#123e62", op: 0.3 },
+  { kind: "puffer",  top: "70%", size: 42,  dur: 38, delay: 12, dir: "rtl", color: "#ffce1f", fin: "#e8a300", op: 0.82 },
+  { kind: "puffer",  top: "30%", size: 34,  dur: 44, delay: 34, dir: "ltr", color: "#1fc7b6", fin: "#0f8f82", op: 0.8 },
+  { kind: "school",  top: "41%", size: 64,  dur: 40, delay: 6,  dir: "rtl", color: "#ffb020", fin: "#e07000", op: 0.7 },
+  { kind: "school",  top: "53%", size: 46,  dur: 46, delay: 22, dir: "ltr", color: "#3aa0e0", fin: "#1a6a9e", op: 0.7 },
 ];
 
 const DRIFT_JELLIES = [
@@ -697,6 +754,8 @@ const DRIFT_JELLIES = [
   { left: "45%", size: 56, dur: 64, delay: 32, op: 0.18, color: "#2ea2d4" },
   { left: "90%", size: 24, dur: 48, delay: 46, op: 0.26, color: "#2596c9" },
   { left: "28%", size: 32, dur: 56, delay: 24, op: 0.2,  color: "#37b0dd" },
+  { left: "64%", size: 36, dur: 50, delay: 8,  op: 0.22, color: "#2ea2d4" },
+  { left: "5%",  size: 26, dur: 58, delay: 40, op: 0.2,  color: "#2596c9" },
 ];
 
 function SeaCreatures() {
@@ -710,7 +769,9 @@ function SeaCreatures() {
           {c.kind === "turtle" && <TurtleSil size={c.size} color={c.color} op={c.op} />}
           {c.kind === "ray" && <RaySil size={c.size} color={c.color} op={c.op} />}
           {c.kind === "whale" && <WhaleSil size={c.size} color={c.color} op={c.op} />}
-          {c.kind === "school" && <SchoolSil size={c.size} color={c.color} op={c.op} />}
+          {c.kind === "dolphin" && <DolphinSil size={c.size} color={c.color} op={c.op} />}
+          {c.kind === "school" && <SchoolSil size={c.size} color={c.color} fin={c.fin ?? c.color} op={c.op} />}
+          {c.kind === "puffer" && <PufferFish size={c.size} color={c.color} fin={c.fin ?? c.color} op={c.op} />}
         </div>
       ))}
       {DRIFT_JELLIES.map((c, i) => (
@@ -735,6 +796,7 @@ function Bubbles() {
 
 // ─── Ocean Floor ─────────────────────────────────────────────────────────────
 function OceanFloor() {
+  const reduce = useReducedMotion();
   const weeds = [95, 125, 72, 112, 88, 104, 135, 78, 98, 118, 82, 108, 65, 92, 115];
   return (
     <div className="fixed bottom-0 left-0 right-0 pointer-events-none z-0">
@@ -769,6 +831,17 @@ function OceanFloor() {
       <svg className="absolute bottom-1.5 left-[58%] -scale-x-100" width="22" height="22" viewBox="0 0 24 24" fill="#7c4cae" opacity="0.4">
         <path d="M12 2l2.4 6.4 6.8.3-5.3 4.1 1.9 6.5L12 19l-5.8 4.3 1.9-6.5-5.3-4.1 6.8-.3L12 2z" />
       </svg>
+      {/* Hovering cartoon fish near the floor */}
+      {!reduce && (
+        <>
+          <div className="animate-float absolute bottom-16 left-[14%]" style={{ animationDelay: "0.6s" }}>
+            <CartoonFish size={30} color="#ff7a1a" fin="#ffd2a6" op={0.85} />
+          </div>
+          <div className="animate-float absolute bottom-20 right-[16%] scale-x-[-1]" style={{ animationDelay: "1.4s" }}>
+            <CartoonFish size={26} color="#1fc7b6" fin="#0f8f82" op={0.85} />
+          </div>
+        </>
+      )}
       {/* Crab */}
       <svg className="absolute bottom-1 left-[40%]" width="42" height="30" viewBox="0 0 44 30" opacity="0.5">
         <g stroke="#8a2f22" strokeWidth="2.2" strokeLinecap="round" fill="none">
@@ -1058,7 +1131,7 @@ export default function Home() {
               </div>
 
               <div className="flex items-center gap-2.5 justify-center lg:justify-start">
-                {[{ icon: Send, label: "Telegram", href: TG_URL }, { icon: WheelIcon, label: "Twitter", href: X_URL }, { icon: Anchor, label: "TON", href: TONSCAN_URL }].map(({ icon: Ico, label, href }, i) => (
+                {[{ icon: Send, label: "Telegram", href: TG_URL }, { icon: XIcon, label: "Twitter", href: X_URL }, { icon: Anchor, label: "TON", href: TONSCAN_URL }].map(({ icon: Ico, label, href }, i) => (
                   <a key={i} href={href} target="_blank" rel="noopener noreferrer" aria-label={label} data-testid={`social-${label.toLowerCase()}`}
                     className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all hover:scale-110"
                     style={{ background: "rgba(7,30,56,0.8)", border: "1px solid rgba(255,255,255,0.15)" }}>
