@@ -605,7 +605,7 @@ function AliveBob({ className = "" }: { className?: string }) {
           style={{ inset: "22%" }} />
       ))}
       <motion.div className="relative z-10" style={{ width: "85%", height: "85%" }}
-        animate={{ y: [0, -18, -4, -20, 0], rotate: [-1.5, 1.5, -2, 1, -1.5] }}
+        animate={{ x: [0, 12, -10, 7, 0], y: [0, -18, -4, -20, 0], rotate: [-1.5, 1.5, -2, 1, -1.5] }}
         transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}>
         <motion.div style={{ width: "100%", height: "100%" }}
           animate={{ scaleX: [1, 1.04, 0.98, 1.05, 1], scaleY: [1, 0.97, 1.03, 0.96, 1] }}
@@ -798,6 +798,7 @@ export default function Home() {
   const [loaded, setLoaded] = useState(false);
   const { playing, toggle: toggleSound, tryAutoplay, resumeFromGesture } = useOceanSound();
 
+  const reduce = useReducedMotion();
   const { scrollY, scrollYProgress } = useScroll();
   const raysY = useTransform(scrollY, [0, 800], [0, -120]);
   const progressScale = useSpring(scrollYProgress, { stiffness: 120, damping: 30, restDelta: 0.001 });
@@ -810,18 +811,20 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded]);
 
-  // ── Gesture listeners from mount: resume iOS suspended ctx on first interaction
+  // ── Start sound on the very first user interaction of ANY kind.
+  // Browsers block audio autoplay without a gesture, so we listen broadly
+  // (mouse move, scroll, click, touch, key) — one fires almost immediately.
   useEffect(() => {
     let fired = false;
-    const EVENTS = ["touchstart", "touchend", "click", "keydown"] as const;
+    const EVENTS = ["pointerdown", "mousedown", "mousemove", "touchstart", "touchend", "wheel", "scroll", "keydown"] as const;
     const onGesture = () => {
       if (fired) return;
       fired = true;
-      EVENTS.forEach(ev => document.removeEventListener(ev, onGesture));
-      resumeFromGesture(); // resumes suspended ctx on iOS; no-op on Chrome (already running)
+      EVENTS.forEach(ev => window.removeEventListener(ev, onGesture));
+      resumeFromGesture(); // creates/resumes ctx inside the gesture → unlocks audio everywhere
     };
-    EVENTS.forEach(ev => document.addEventListener(ev, onGesture, { passive: true }));
-    return () => EVENTS.forEach(ev => document.removeEventListener(ev, onGesture));
+    EVENTS.forEach(ev => window.addEventListener(ev, onGesture, { passive: true }));
+    return () => EVENTS.forEach(ev => window.removeEventListener(ev, onGesture));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -971,10 +974,15 @@ export default function Home() {
               <ContractAddress className="mt-1 w-full sm:w-auto" />
             </motion.div>
 
-            {/* Bob — top on mobile, right on desktop */}
+            {/* Bob — top on mobile, right on desktop. Swims in from the left. */}
             <motion.div className="relative z-10 flex items-center justify-center w-full lg:w-1/2"
-              initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: loaded ? 1 : 0, scale: loaded ? 1 : 0.85 }}
-              transition={{ duration: 0.9, delay: 0.2 }}>
+              initial={reduce ? { opacity: 0 } : { opacity: 0, x: -200, y: 30, rotate: -12, scale: 0.78 }}
+              animate={loaded
+                ? (reduce
+                    ? { opacity: 1, x: 0, y: 0, rotate: 0, scale: 1 }
+                    : { opacity: 1, x: 0, y: [30, -18, 6, 0], rotate: [-12, 6, -3, 0], scale: 1 })
+                : (reduce ? { opacity: 0 } : { opacity: 0, x: -200, scale: 0.78 })}
+              transition={{ duration: reduce ? 0.5 : 1.7, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}>
               <AliveBob className="w-[min(260px,68vw)] sm:w-[min(340px,60vw)] lg:w-[min(460px,46vw)]" />
             </motion.div>
           </div>
