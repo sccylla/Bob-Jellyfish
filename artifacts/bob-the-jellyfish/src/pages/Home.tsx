@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence, useAnimationControls, useScroll, useTransform } from "framer-motion";
+import { motion, AnimatePresence, useAnimationControls, useScroll, useTransform, useSpring, useReducedMotion } from "framer-motion";
 import { Fish, Anchor, Waves, Droplets, Shell, Compass, Volume2, VolumeX, ArrowRight, Send, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -773,13 +773,34 @@ function ContractAddress({ className = "" }: { className?: string }) {
   );
 }
 
+// ─── Cinematic Scroll Reveal ───────────────────────────────────────────────────
+const EASE_OUT = [0.22, 1, 0.36, 1] as const;
+function Reveal({
+  children, className = "", y = 44, delay = 0, duration = 0.85, amount = 0.25,
+}: {
+  children: React.ReactNode; className?: string; y?: number; delay?: number; duration?: number; amount?: number;
+}) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.div
+      className={className}
+      initial={reduce ? { opacity: 0 } : { opacity: 0, y, filter: "blur(10px)" }}
+      whileInView={reduce ? { opacity: 1 } : { opacity: 1, y: 0, filter: "blur(0px)" }}
+      viewport={{ once: true, amount }}
+      transition={{ duration: reduce ? 0.3 : duration, delay: reduce ? 0 : delay, ease: EASE_OUT }}>
+      {children}
+    </motion.div>
+  );
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function Home() {
   const [loaded, setLoaded] = useState(false);
   const { playing, toggle: toggleSound, tryAutoplay, resumeFromGesture } = useOceanSound();
 
-  const { scrollY } = useScroll();
+  const { scrollY, scrollYProgress } = useScroll();
   const raysY = useTransform(scrollY, [0, 800], [0, -120]);
+  const progressScale = useSpring(scrollYProgress, { stiffness: 120, damping: 30, restDelta: 0.001 });
 
   // ── After loading: try autoplay (Chrome/Firefox/Android play; iOS suspends)
   useEffect(() => {
@@ -813,6 +834,10 @@ export default function Home() {
       <motion.div className="relative text-white overflow-x-hidden"
         style={{ background: "linear-gradient(180deg, #071e38 0%, #0a3c6a 20%, #0b5a95 45%, #083470 70%, #041830 100%)" }}
         initial={{ opacity: 0 }} animate={{ opacity: loaded ? 1 : 0 }} transition={{ duration: 0.8 }}>
+
+        {/* ── Scroll progress indicator ── */}
+        <motion.div className="fixed top-0 left-0 right-0 h-[3px] z-[60] origin-left"
+          style={{ scaleX: progressScale, background: "linear-gradient(90deg, #00d4ff 0%, #00e5ff 45%, #ff8c1a 100%)", boxShadow: "0 0 12px rgba(0,200,255,0.6)" }} />
 
         {/* ── Caustic underwater light shimmer (boosted opacity) ── */}
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
@@ -967,8 +992,7 @@ export default function Home() {
         {/* ── Tokenomics ─────────────────────────────────────────────────── */}
         <section id="tokenomics" className="py-10 relative z-10 px-5 sm:px-8"
           style={{ background: "rgba(3,14,38,0.95)" }}>
-          <motion.div initial={{ opacity: 0, y: 25 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}
-            className="max-w-4xl mx-auto">
+          <Reveal className="max-w-4xl mx-auto">
             <SectionHeading icon={NautilusIcon} title="Depths of $BOB" sub="Token Distribution" />
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {[
@@ -978,8 +1002,8 @@ export default function Home() {
                 { icon: SeaStarIcon, label: "Contract", value: "Renounced", sub: "Fully Safe" },
               ].map(({ icon: Ico, label, value, sub }, i) => (
                 <motion.div key={i}
-                  initial={{ opacity: 0, scale: 0.88 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }}
-                  transition={{ delay: i * 0.09, duration: 0.45 }} whileHover={{ y: -6, transition: { duration: 0.18 } }}
+                  initial={{ opacity: 0, y: 30, scale: 0.9 }} whileInView={{ opacity: 1, y: 0, scale: 1 }} viewport={{ once: true, amount: 0.3 }}
+                  transition={{ delay: i * 0.1, duration: 0.6, ease: EASE_OUT }} whileHover={{ y: -6, transition: { duration: 0.18 } }}
                   className="rounded-2xl p-5 flex flex-col items-center gap-2 text-center"
                   style={{ background: "rgba(10,60,110,0.28)", border: "1px solid rgba(255,255,255,0.09)", backdropFilter: "blur(14px)" }}>
                   <div className="w-11 h-11 rounded-full flex items-center justify-center"
@@ -992,7 +1016,7 @@ export default function Home() {
                 </motion.div>
               ))}
             </div>
-          </motion.div>
+          </Reveal>
         </section>
 
         <WaveDivider flip color="rgba(4,18,45,0.97)" />
@@ -1000,8 +1024,7 @@ export default function Home() {
         {/* ── How to Buy ─────────────────────────────────────────────────── */}
         <section id="how-to-buy" className="py-10 relative z-10 px-5 sm:px-8"
           style={{ background: "rgba(4,18,45,0.97)" }}>
-          <motion.div initial={{ opacity: 0, y: 25 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}
-            className="max-w-2xl mx-auto">
+          <Reveal className="max-w-2xl mx-auto">
             <SectionHeading icon={Compass} title="Chart the Course" sub="How to Acquire $BOB" />
             <div className="space-y-2.5">
               {[
@@ -1011,8 +1034,8 @@ export default function Home() {
                 { icon: TridentIcon,   step: "IV", title: "Claim $BOB",           desc: "Paste the contract address and execute the swap." },
               ].map(({ icon: Ico, step, title, desc }, i) => (
                 <motion.div key={i}
-                  initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
-                  transition={{ delay: i * 0.1, duration: 0.5 }}
+                  initial={{ opacity: 0, x: -36, filter: "blur(6px)" }} whileInView={{ opacity: 1, x: 0, filter: "blur(0px)" }} viewport={{ once: true, amount: 0.4 }}
+                  transition={{ delay: i * 0.12, duration: 0.6, ease: EASE_OUT }}
                   className="rounded-xl p-3 sm:p-4 flex items-center gap-3 sm:gap-4"
                   style={{ background: "rgba(10,60,110,0.22)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(10px)" }}
                   data-testid={`step-${i + 1}`}>
@@ -1028,7 +1051,7 @@ export default function Home() {
                 </motion.div>
               ))}
             </div>
-          </motion.div>
+          </Reveal>
         </section>
 
         <WaveDivider color="rgba(2,8,22,0.99)" />
@@ -1036,8 +1059,7 @@ export default function Home() {
         {/* ── Footer ─────────────────────────────────────────────────────── */}
         <footer id="community" className="relative z-10 py-10 px-5 sm:px-8 text-center"
           style={{ background: "rgba(2,8,22,0.99)" }}>
-          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.9 }}
-            className="max-w-lg mx-auto">
+          <Reveal className="max-w-lg mx-auto" y={50} duration={0.95} amount={0.2}>
             <motion.img src="/bob-nobg.png" alt="Bob" className="w-20 h-20 mx-auto mb-4 object-contain"
               style={{ filter: "drop-shadow(0 8px 24px rgba(255,140,0,0.4))" }}
               animate={{ y: [0, -10, 0], rotate: [-2, 2, -2] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }} />
@@ -1080,7 +1102,7 @@ export default function Home() {
             <p className="text-white/10 text-[10px] mt-3 font-sans tracking-widest">
               © {new Date().getFullYear()} BOB THE JELLYFISH — ALL VIBES RESERVED
             </p>
-          </motion.div>
+          </Reveal>
         </footer>
       </motion.div>
     </>
