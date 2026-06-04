@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence, useAnimationControls, useScroll, useTransform } from "framer-motion";
-import { Fish, Anchor, Waves, Droplets, Shell, Compass, Volume2, VolumeX, ArrowRight, Send } from "lucide-react";
+import { Fish, Anchor, Waves, Droplets, Shell, Compass, Volume2, VolumeX, ArrowRight, Send, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // ─── Custom Oceanic SVG Icons ─────────────────────────────────────────────────
@@ -737,6 +737,42 @@ const SectionHeading = ({ icon: Icon, title, sub }: { icon: React.ComponentType<
   </div>
 );
 
+// ─── Project Links & Contract ─────────────────────────────────────────────────
+const CONTRACT_ADDRESS = "EQAYzcxoD397mkyG6aUsqNV0VurLVxzkMUEeBF6_OxPRKNn2";
+const X_URL  = "https://x.com/JellyfishBobTON";
+const TG_URL = "https://t.me/Bob_theJellyfish";
+const BUY_URL = `https://app.ston.fi/swap?ft=TON&tt=${CONTRACT_ADDRESS}`;
+const TONSCAN_URL = `https://tonscan.org/address/${CONTRACT_ADDRESS}`;
+
+// ─── Copyable Contract Address ─────────────────────────────────────────────────
+function ContractAddress({ className = "" }: { className?: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(CONTRACT_ADDRESS);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = CONTRACT_ADDRESS; document.body.appendChild(ta);
+      ta.select(); try { document.execCommand("copy"); } catch {}
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+  return (
+    <button onClick={copy} data-testid="button-copy-contract"
+      className={`group flex items-center gap-2 sm:gap-3 rounded-full pl-4 pr-3 py-2 transition-all hover:scale-[1.02] max-w-full ${className}`}
+      style={{ background: "rgba(7,30,56,0.85)", border: "1px solid rgba(0,212,255,0.3)", boxShadow: "0 0 18px rgba(0,200,255,0.12)" }}>
+      <span className="font-sans text-[9px] tracking-[0.25em] uppercase text-cyan-400/70 shrink-0 hidden sm:inline">CA</span>
+      <span className="font-mono text-[11px] sm:text-xs text-cyan-100/90 truncate">{CONTRACT_ADDRESS}</span>
+      <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center"
+        style={{ background: copied ? "rgba(0,220,150,0.2)" : "rgba(0,212,255,0.15)", border: "1px solid rgba(0,212,255,0.3)" }}>
+        {copied ? <Check size={13} className="text-emerald-300" /> : <Copy size={13} className="text-cyan-300" />}
+      </span>
+    </button>
+  );
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function Home() {
   const [loaded, setLoaded] = useState(false);
@@ -747,10 +783,9 @@ export default function Home() {
 
   // ── After loading: try autoplay (Chrome/Firefox/Android play; iOS suspends)
   useEffect(() => {
-    if (loaded) {
-      const t = setTimeout(tryAutoplay, 400);
-      return () => clearTimeout(t);
-    }
+    if (!loaded) return;
+    const t = setTimeout(tryAutoplay, 400);
+    return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded]);
 
@@ -836,11 +871,13 @@ export default function Home() {
               data-testid="button-sound">
               {playing ? <Volume2 size={14} className="text-[#00bfff]" /> : <VolumeX size={14} className="text-white/50" />}
             </button>
-            <Button className="rounded-full px-3 sm:px-5 h-8 sm:h-9 font-display text-white text-xs sm:text-sm whitespace-nowrap"
-              style={{ background: "linear-gradient(135deg, #ff8c1a, #e05a00)", border: "none", boxShadow: "0 3px 0 rgba(0,0,0,0.3)" }}
-              data-testid="button-buy-nav">
-              Buy $BOB
-            </Button>
+            <a href={BUY_URL} target="_blank" rel="noopener noreferrer">
+              <Button className="rounded-full px-3 sm:px-5 h-8 sm:h-9 font-display text-white text-xs sm:text-sm whitespace-nowrap"
+                style={{ background: "linear-gradient(135deg, #ff8c1a, #e05a00)", border: "none", boxShadow: "0 3px 0 rgba(0,0,0,0.3)" }}
+                data-testid="button-buy-nav">
+                Buy $BOB
+              </Button>
+            </a>
           </div>
         </nav>
 
@@ -881,11 +918,13 @@ export default function Home() {
               </p>
 
               <div className="flex flex-wrap gap-2.5 justify-center lg:justify-start">
-                <Button size="lg" className="h-12 sm:h-14 px-6 sm:px-8 rounded-full font-display text-white text-lg sm:text-xl"
-                  style={{ background: "linear-gradient(135deg, #ff8c1a 0%, #e05a00 100%)", border: "none", boxShadow: "0 5px 0 rgba(0,0,0,0.35), 0 0 28px rgba(255,140,0,0.35)" }}
-                  data-testid="button-buy-hero">
-                  <TridentIcon size={17} className="mr-2 shrink-0" /> Acquire $BOB
-                </Button>
+                <a href={BUY_URL} target="_blank" rel="noopener noreferrer">
+                  <Button size="lg" className="h-12 sm:h-14 px-6 sm:px-8 rounded-full font-display text-white text-lg sm:text-xl"
+                    style={{ background: "linear-gradient(135deg, #ff8c1a 0%, #e05a00 100%)", border: "none", boxShadow: "0 5px 0 rgba(0,0,0,0.35), 0 0 28px rgba(255,140,0,0.35)" }}
+                    data-testid="button-buy-hero">
+                    <TridentIcon size={17} className="mr-2 shrink-0" /> Acquire $BOB
+                  </Button>
+                </a>
                 <Button size="lg" variant="outline"
                   className="h-12 sm:h-14 px-6 sm:px-8 rounded-full font-display text-lg sm:text-xl text-cyan-300 hover:text-white"
                   style={{ border: "2px solid #00d4ff", background: "rgba(0,212,255,0.08)", boxShadow: "0 0 18px rgba(0,200,255,0.2)" }}
@@ -895,14 +934,16 @@ export default function Home() {
               </div>
 
               <div className="flex items-center gap-2.5 justify-center lg:justify-start">
-                {[{ icon: Send, label: "Telegram" }, { icon: WheelIcon, label: "Twitter" }, { icon: Anchor, label: "TON" }].map(({ icon: Ico, label }, i) => (
-                  <button key={i} aria-label={label} data-testid={`social-${label.toLowerCase()}`}
+                {[{ icon: Send, label: "Telegram", href: TG_URL }, { icon: WheelIcon, label: "Twitter", href: X_URL }, { icon: Anchor, label: "TON", href: TONSCAN_URL }].map(({ icon: Ico, label, href }, i) => (
+                  <a key={i} href={href} target="_blank" rel="noopener noreferrer" aria-label={label} data-testid={`social-${label.toLowerCase()}`}
                     className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all hover:scale-110"
                     style={{ background: "rgba(7,30,56,0.8)", border: "1px solid rgba(255,255,255,0.15)" }}>
                     <Ico size={14} className="text-white/60" />
-                  </button>
+                  </a>
                 ))}
               </div>
+
+              <ContractAddress className="mt-1 w-full sm:w-auto" />
             </motion.div>
 
             {/* Bob — top on mobile, right on desktop */}
@@ -1010,14 +1051,18 @@ export default function Home() {
             <p className="text-white/40 mb-5 text-sm font-sans tracking-[0.2em] uppercase">Ride the wave or miss the tide</p>
 
             <div className="flex flex-wrap justify-center gap-3 mb-6">
-              <Button size="lg" className="h-12 px-7 rounded-full font-display text-white text-lg sm:text-xl"
-                style={{ background: "linear-gradient(135deg, #ff8c1a 0%, #e05a00 100%)", border: "none", boxShadow: "0 5px 0 rgba(0,0,0,0.3), 0 0 24px rgba(255,140,0,0.3)" }} data-testid="button-telegram">
-                <Send className="mr-2" size={16} /> Telegram
-              </Button>
-              <Button size="lg" className="h-12 px-7 rounded-full font-display text-cyan-300 text-lg sm:text-xl"
-                style={{ background: "rgba(0,212,255,0.08)", border: "2px solid #00d4ff", boxShadow: "0 0 18px rgba(0,200,255,0.2)" }} data-testid="button-buy-footer">
-                <TridentIcon size={16} className="mr-2" /> Buy $BOB
-              </Button>
+              <a href={TG_URL} target="_blank" rel="noopener noreferrer">
+                <Button size="lg" className="h-12 px-7 rounded-full font-display text-white text-lg sm:text-xl"
+                  style={{ background: "linear-gradient(135deg, #ff8c1a 0%, #e05a00 100%)", border: "none", boxShadow: "0 5px 0 rgba(0,0,0,0.3), 0 0 24px rgba(255,140,0,0.3)" }} data-testid="button-telegram">
+                  <Send className="mr-2" size={16} /> Telegram
+                </Button>
+              </a>
+              <a href={BUY_URL} target="_blank" rel="noopener noreferrer">
+                <Button size="lg" className="h-12 px-7 rounded-full font-display text-cyan-300 text-lg sm:text-xl"
+                  style={{ background: "rgba(0,212,255,0.08)", border: "2px solid #00d4ff", boxShadow: "0 0 18px rgba(0,200,255,0.2)" }} data-testid="button-buy-footer">
+                  <TridentIcon size={16} className="mr-2" /> Buy $BOB
+                </Button>
+              </a>
             </div>
 
             <div className="flex items-center justify-center gap-2 mb-5">
